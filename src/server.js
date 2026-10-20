@@ -14,6 +14,7 @@ const mailController = require('./api/mail.controller');
 const configController = require('./api/config.controller');
 const imapListener = require('./core/imap-listener');
 const webhookDispatcher = require('./core/webhook-dispatcher');
+const queue = require('./core/queue');
 
 const app = express();
 const server = http.createServer(app);
@@ -39,6 +40,11 @@ function broadcastWs(payload) {
 }
 app.set('broadcastWs', broadcastWs);
 
+// Đăng ký lắng nghe sự kiện Hàng đợi để phát ra Dashboard theo thời gian thực
+queue.setEventListener((event) => {
+  broadcastWs(event);
+});
+
 // REST API Routes
 app.get('/api/v1/health', (req, res) => {
   res.json({
@@ -48,10 +54,13 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+// Mail Endpoints
 app.post('/api/v1/send', mailController.sendMail);
 app.get('/api/v1/mails', mailController.getMails);
 app.delete('/api/v1/mails', mailController.clearMails);
+app.get('/api/v1/queue/stats', mailController.getQueueStats);
 
+// Config Endpoints
 app.get('/api/v1/config', configController.getConfig);
 app.post('/api/v1/config/mode', configController.setMode);
 app.post('/api/v1/config/credentials', configController.updateCredentials);
@@ -74,5 +83,6 @@ server.listen(PORT, () => {
   console.log(`🚀 [Email Gateway] Server đang chạy tại: http://localhost:${PORT}`);
   console.log(`🎛️  [Dashboard UI] Truy cập: http://localhost:${PORT}`);
   console.log(`🧪 [Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
+  console.log(`📊 [Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
   console.log(`====================================================`);
 });
