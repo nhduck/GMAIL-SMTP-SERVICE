@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth-Email Hub | Hybrid Email-as-a-Service Gateway</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>Auth-Email Hub</h1>
+          <p class="subtitle">Hybrid Email-as-a-Service Gateway (SOA Architecture)</p>
+        </div>
+      </div>
+      
+      <!-- Mode Switcher -->
+      <div class="mode-switch-wrapper">
+        <span class="mode-label">Chế độ:</span>
+        <div class="toggle-container">
+          <button id="btnSandbox" class="mode-btn active">🧪 Sandbox (Dev)</button>
+          <button id="btnLive" class="mode-btn">🚀 Live Gmail</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="inboxTab">📬 Virtual Inbox (<span id="mailCount">0</span>)</button>
+      <button class="tab-btn" data-tab="testTab">✉️ Test Gửi Email</button>
+      <button class="tab-btn" data-tab="configTab">⚙️ Cấu Hình Gmail</button>
+      <button class="tab-btn" data-tab="codeTab">💻 Mã Nhúng 1 Dòng (DX)</button>
+    </nav>
+
+    <!-- TAB 1: Virtual Inbox -->
+    <section id="inboxTab" class="tab-content active">
+      <div class="section-header">
+        <div>
+          <h2>Hộp Thư Ảo Thời Gian Thực (Sandbox Inspector)</h2>
+          <p class="desc">Email gửi đến trong chế độ Sandbox sẽ hiển thị ngay tại đây mà không cần tài khoản hay mật khẩu.</p>
+        </div>
+        <button id="btnClearMails" class="btn btn-outline-danger">Dọn Sạch Hộp Thư</button>
+      </div>
+
+      <div class="inbox-layout">
+        <div class="mail-list" id="mailList">
+          <div class="empty-state">Chưa có email nào. Hãy thử tab "Test Gửi Email"!</div>
+        </div>
+        <div class="mail-viewer" id="mailViewer">
+          <div class="empty-preview">Chọn một email bên trái để xem nội dung chi tiết</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Test Send -->
+    <section id="testTab" class="tab-content">
+      <div class="card card-form">
+        <h2>Kiểm Thử Gửi Email Tức Thì</h2>
+        <p class="desc">Thử nghiệm gửi email qua API Gateway của hệ thống.</p>
+        <form id="testSendForm">
+          <div class="form-group">
+            <label>Gửi đến (To):</label>
+            <input type="email" id="testTo" required placeholder="nhanvien@example.com" value="test@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Tiêu đề (Subject):</label>
+            <input type="text" id="testSubject" required placeholder="Xác thực OTP hoặc Thông báo" value="Mã xác thực OTP của bạn là: 8921" />
+          </div>
+          <div class="form-group">
+            <label>Nội dung HTML:</label>
+            <textarea id="testHtml" rows="5" placeholder="Nhập nội dung HTML..."><div style="font-family:sans-serif;padding:20px;background:#f8fafc;border-radius:12px;">
+  <h2 style="color:#2563eb;">Chào mừng bạn đến với hệ thống!</h2>
+  <p>Mã kích hoạt tài khoản của bạn là:</p>
+  <div style="font-size:24px;font-weight:bold;letter-spacing:4px;color:#0f172a;">8921</div>
+</div></textarea>
+          </div>
+          <button type="submit" id="btnSendTest" class="btn btn-primary">Bấm Gửi Ngay (<span id="currentModeLabel">Sandbox</span>)</button>
+          <div id="testStatus" class="status-box"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: Configuration -->
+    <section id="configTab" class="tab-content">
+      <div class="card card-form">
+        <h2>Cấu Hình Tài Khoản Gmail (Cho Chế Độ Live)</h2>
+        <p class="desc">Chỉ cần 1 App Password duy nhất của Google để gửi qua SMTP:587 và nhận qua IMAP:993.</p>
+        <form id="configForm">
+          <div class="form-group">
+            <label>Tài khoản Gmail:</label>
+            <input type="email" id="cfgUser" placeholder="your_email@gmail.com" />
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu ứng dụng (App Password 16 ký tự):</label>
+            <input type="password" id="cfgAppPassword" placeholder="xxxx xxxx xxxx xxxx" />
+            <small class="helper-text">💡 Cách lấy: Vào Tài khoản Google &gt; Bảo mật &gt; Xác minh 2 bước &gt; Mật khẩu ứng dụng.</small>
+          </div>
+          <div class="form-group">
+            <label>Webhook URL (Tùy chọn - Nhận thông báo khi có mail mới):</label>
+            <input type="url" id="cfgWebhookUrl" placeholder="https://my-backend.com/api/email-received" />
+          </div>
+          <button type="submit" class="btn btn-primary">Lưu Cấu Hình</button>
+          <div id="configStatus" class="status-box"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: Code Integration -->
+    <section id="codeTab" class="tab-content">
+      <div class="card">
+        <h2>Tích Hợp 1 Dòng Vào Dự Án Khác (Developer Experience)</h2>
+        <p class="desc">Mọi dự án Web/Backend chỉ cần copy 1 trong các đoạn mã sau là dùng được ngay:</p>
+
+        <h3>1. Web Component (Chuẩn 1 dòng như Bootstrap - HTML thuần)</h3>
+        <pre><code>&lt;!-- Dán vào thẻ &lt;head&gt; hoặc &lt;body&gt; --&gt;
+&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
+&lt;mail-widget target="admin@mydomain.com" title="Liên Hệ Với Chúng Tôi"&gt;&lt;/mail-widget&gt;</code></pre>
+
+        <h3>2. JavaScript SDK (Dành cho React/Vue/Frontend SPA)</h3>
+        <pre><code>&lt;script src="http://localhost:3000/mail-agent.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  MailAgent.send({
+    to: "customer@gmail.com",
+    subject: "Mã OTP",
+    html: "&lt;b&gt;123456&lt;/b&gt;"
+  });
+&lt;/script&gt;</code></pre>
+
+        <h3>3. REST API / cURL (Dành cho Backend Node, Python, Java, PHP)</h3>
+        <pre><code>curl -X POST http://localhost:3000/api/v1/send \
+  -H "Content-Type: application/json" \
+  -d '{"to": "dev@example.com", "subject": "Test", "html": "Hello SOA"}'</code></pre>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

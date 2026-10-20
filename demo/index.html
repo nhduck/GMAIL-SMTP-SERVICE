@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dự Án Khách Hàng (Demo Tích Hợp 1 Dòng)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { color: #2563eb; margin-top: 0; }
+    .badge {
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    pre {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+  </style>
+  <!-- 1 DÒNG NHÚNG DUY NHẤT: GIỐNG BOOTSTRAP -->
+  <script src="/embed.js"></script>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">Demo Client Application</span>
+    <h1>Website Bán Hàng / Đặt Lịch (Client App)</h1>
+    <p>Trang web này mô phỏng một dự án bất kỳ của khách hàng có nhu cầu gửi email liên hệ. Khách hàng chỉ cần dán <b>1 dòng script</b> vào thẻ head và đặt thẻ <code>&lt;mail-widget&gt;</code>:</p>
+
+    <pre><code>&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
+&lt;mail-widget target="admin@cuahang.com" title="Đặt Lịch Tư Vấn Sản Phẩm"&gt;&lt;/mail-widget&gt;</code></pre>
+
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+
+    <!-- Widget form tự động render bên dưới -->
+    <mail-widget target="admin@cuahang.com" title="Đặt Lịch Tư Vấn Sản Phẩm" button-text="Gửi Đặt Lịch"></mail-widget>
+  </div>
+</body>
+</html>
