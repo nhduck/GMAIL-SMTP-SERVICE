@@ -23,9 +23,9 @@
 
 | Thành viên | Trách nhiệm chính | File / Module phụ trách | Nhánh Git |
 | :--- | :--- | :--- | :--- |
-| **Thành viên 1** (Core Backend) | API Gateway, Dual-Mode Switcher, Message Queue, SMTP Live Pool (cổng 587) | `src/server.js`, `src/api/mail.controller.js`, `src/core/mode-manager.js`, `src/core/queue.js`, `src/core/smtp-live.js` | `feat/core-outbound` |
-| **Thành viên 2** (Inbound & SDK) | IMAP IDLE Listener (cổng 993), MIME Parser, Webhook Dispatcher, Web Component `<mail-widget>`, Client SDK | `src/core/imap-listener.js`, `src/core/webhook-dispatcher.js`, `src/public/embed.js`, `src/public/mail-agent.min.js` | `feat/inbound-sdk` |
-| **Thành viên 3** (UI & Demo Lead) | Glassmorphism Dashboard, Live Virtual Mailbox Inspector, Snippet Generator, Demo Client App, Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html`, `start.bat` | `feat/dashboard-ui` |
+| **Thành** (Core Backend) | API Gateway, Dual-Mode Switcher, Message Queue, SMTP Live Pool (cổng 587) | `src/server.js`, `src/api/mail.controller.js`, `src/core/mode-manager.js`, `src/core/queue.js`, `src/core/smtp-live.js` | `feat/core-outbound` |
+| **Đức** (Inbound & SDK) | IMAP IDLE Listener (cổng 993), MIME Parser, Webhook Dispatcher, Web Component `<mail-widget>`, Client SDK | `src/core/imap-listener.js`, `src/core/webhook-dispatcher.js`, `src/public/embed.js`, `src/public/mail-agent.min.js` | `feat/inbound-sdk` |
+| **Đạt** (UI & Demo Lead) | Glassmorphism Dashboard, Live Virtual Mailbox Inspector, Snippet Generator, Demo Client App, Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html`, `start.bat` | `feat/dashboard-ui` |
 
 ---
 
