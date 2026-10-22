@@ -84,15 +84,19 @@ imapListener.startListening((newMail) => {
 
 // Khởi động Server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 [Email Gateway] Server đang chạy tại: http://localhost:${PORT}`);
-  console.log(`🎛️  [Dashboard UI] Truy cập: http://localhost:${PORT}`);
-  console.log(`🧪 [Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
-  console.log(`📊 [Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
-  console.log(`☠️  [DLQ Monitor] Truy cập: http://localhost:${PORT}/api/v1/queue/dlq`);
-  console.log(`====================================================`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 [Email Gateway] Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`🎛️  [Dashboard UI] Truy cập: http://localhost:${PORT}`);
+    console.log(`🧪 [Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
+    console.log(`📊 [Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
+    console.log(`☠️  [DLQ Monitor] Truy cập: http://localhost:${PORT}/api/v1/queue/dlq`);
+    console.log(`====================================================`);
+  });
+}
+
+module.exports = { app, server };
 
 // --- CƠ CHẾ GRACEFUL SHUTDOWN (TẮT MÁY CHỦ AN TOÀN) ---
 let isShuttingDown = false;
