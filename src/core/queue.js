@@ -1,6 +1,6 @@
 /**
- * Advanced Queue Engine: Hàng đợi bất đồng bộ có Retry Exponential Backoff
- * và điều tiết tốc độ (Rate Limiting) đạt SLA phản hồi API < 45ms
+ * Advanced Queue Engine: Hàng đợi bất đồng bộ có Retry Exponential Backoff,
+ * Dead-Letter Queue (DLQ), Điều phối luồng và cơ chế Graceful Drain
  * Thành viên phụ trách: Thành (Core Backend)
  */
 
@@ -8,13 +8,14 @@ const { v4: uuidv4 } = require('uuid');
 
 class AsyncEmailQueue {
   constructor(options = {}) {
-    this.concurrency = options.concurrency || 2; // Số worker chạy đồng thời (phù hợp Gmail connection pool)
-    this.maxRetries = options.maxRetries || 3;    // Số lần thử lại tối đa
+    this.concurrency = options.concurrency || 2;   // Số worker chạy đồng thời
+    this.maxRetries = options.maxRetries || 3;      // Số lần thử lại tối đa trước khi đưa vào DLQ
     this.baseDelayMs = options.baseDelayMs || 1000; // Thời gian chờ cơ sở (1 giây)
 
     this.queue = [];
     this.activeWorkers = 0;
-    this.jobHistory = []; // Lưu 50 job gần nhất để phục vụ giám sát và báo cáo SLA
+    this.jobHistory = [];       // Lưu 50 job gần nhất phục vụ giám sát
+    this.deadLetterQueue = [];  // Dead-Letter Queue (DLQ) lưu các job hỏng sau 3 lần retry
 
     // Metrics phục vụ báo cáo hiệu năng môn SOA
     this.metrics = {
@@ -22,10 +23,11 @@ class AsyncEmailQueue {
       totalCompleted: 0,
       totalFailed: 0,
       totalRetried: 0,
+      totalSentToDlq: 0,
       averageProcessTimeMs: 0
     };
 
-    this.onJobEvent = null; // Callback để bắn WebSocket ra ngoài
+    this.onJobEvent = null; // Callback phát WebSocket ra ngoài
   }
 
   setEventListener(listener) {
@@ -48,7 +50,8 @@ class AsyncEmailQueue {
       maxRetries: this.maxRetries,
       enqueuedAt: job.enqueuedAt,
       completedAt: job.completedAt,
-      error: job.error
+      error: job.error,
+      movedToDlqAt: job.movedToDlqAt || null
     };
   }
 
@@ -74,7 +77,6 @@ class AsyncEmailQueue {
     this.metrics.totalEnqueued += 1;
     this.emit('JOB_ENQUEUED', job);
 
-    // Kích hoạt worker xử lý
     this.scheduleNext();
 
     return {
@@ -100,7 +102,7 @@ class AsyncEmailQueue {
 
     try {
       await job.handler();
-      
+
       const duration = Date.now() - startTime;
       job.status = 'COMPLETED';
       job.completedAt = new Date().toISOString();
@@ -117,23 +119,31 @@ class AsyncEmailQueue {
         job.retries += 1;
         this.metrics.totalRetried += 1;
 
-        // Cơ chế Exponential Backoff: delay = baseDelay * (2 ^ (retries - 1))
-        // Lần 1: 1s, Lần 2: 2s, Lần 3: 4s
+        // Exponential Backoff: delay = baseDelay * (2 ^ (retries - 1))
         const backoffDelay = this.baseDelayMs * Math.pow(2, job.retries - 1);
         console.log(`[Queue] Lên lịch thử lại job ${job.id} sau ${backoffDelay}ms (Exponential Backoff)...`);
-        
+
         job.status = 'SCHEDULED_RETRY';
         this.emit('JOB_RETRY_SCHEDULED', job);
 
         setTimeout(() => {
-          this.queue.unshift(job); // Đưa lại vào đầu hàng đợi
+          this.queue.unshift(job);
           this.scheduleNext();
         }, backoffDelay);
       } else {
-        job.status = 'FAILED';
+        // Vượt quá số lần thử lại -> Chuyển vào Dead-Letter Queue (DLQ)
+        job.status = 'DEAD_LETTER';
         job.completedAt = new Date().toISOString();
+        job.movedToDlqAt = new Date().toISOString();
+
         this.metrics.totalFailed += 1;
-        this.emit('JOB_FAILED', job);
+        this.metrics.totalSentToDlq += 1;
+
+        this.deadLetterQueue.unshift(job);
+        if (this.deadLetterQueue.length > 100) this.deadLetterQueue.pop();
+
+        console.error(`☠️ [Dead-Letter Queue] Job ${job.id} đã thử ${this.maxRetries} lần thất bại. Đưa vào DLQ.`);
+        this.emit('JOB_MOVED_TO_DLQ', job);
       }
     } finally {
       this.activeWorkers -= 1;
@@ -152,16 +162,59 @@ class AsyncEmailQueue {
     }
   }
 
+  // --- CÁC HÀM QUẢN TRỊ DEAD-LETTER QUEUE (DLQ) ---
+  getDeadLetterQueue() {
+    return this.deadLetterQueue.map(j => this.serializeJob(j));
+  }
+
+  retryDeadLetterJob(jobId) {
+    const idx = this.deadLetterQueue.findIndex(j => j.id === jobId);
+    if (idx === -1) return null;
+
+    const [job] = this.deadLetterQueue.splice(idx, 1);
+    job.retries = 0;
+    job.status = 'PENDING';
+    job.error = null;
+    job.movedToDlqAt = null;
+
+    this.queue.push(job);
+    this.scheduleNext();
+    this.emit('JOB_RETRY_FROM_DLQ', job);
+
+    return this.serializeJob(job);
+  }
+
+  clearDeadLetterQueue() {
+    const count = this.deadLetterQueue.length;
+    this.deadLetterQueue.length = 0;
+    return count;
+  }
+
+  // --- HỖ TRỢ GRACEFUL SHUTDOWN ---
+  async drainActiveWorkers(timeoutMs = 8000) {
+    const start = Date.now();
+    console.log(`[Queue Drain] Đang chờ ${this.activeWorkers} worker hoàn thành công việc...`);
+
+    while (this.activeWorkers > 0) {
+      if (Date.now() - start > timeoutMs) {
+        console.warn(`[Queue Drain] Quá thời gian timeout (${timeoutMs}ms). Bắt buộc dừng.`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    console.log('[Queue Drain] Toàn bộ worker đã giải phóng an toàn.');
+  }
+
   getStats() {
     return {
       queueLength: this.queue.length,
       activeWorkers: this.activeWorkers,
       concurrency: this.concurrency,
+      deadLetterQueueLength: this.deadLetterQueue.length,
       metrics: this.metrics,
       recentJobs: this.jobHistory.map(j => this.serializeJob(j))
     };
   }
 }
 
-// Khởi tạo hàng đợi dùng chung
 module.exports = new AsyncEmailQueue();

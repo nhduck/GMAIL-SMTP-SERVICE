@@ -1,6 +1,6 @@
 /**
  * Auth-Email-Service: Hybrid Email-as-a-Service Gateway
- * Entrypoint máy chủ chính
+ * Entrypoint máy chủ chính tích hợp Graceful Shutdown & Dead-Letter Queue
  */
 
 require('dotenv').config();
@@ -15,6 +15,7 @@ const configController = require('./api/config.controller');
 const imapListener = require('./core/imap-listener');
 const webhookDispatcher = require('./core/webhook-dispatcher');
 const queue = require('./core/queue');
+const smtpLive = require('./core/smtp-live');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +61,11 @@ app.get('/api/v1/mails', mailController.getMails);
 app.delete('/api/v1/mails', mailController.clearMails);
 app.get('/api/v1/queue/stats', mailController.getQueueStats);
 
+// Dead-Letter Queue (DLQ) Endpoints
+app.get('/api/v1/queue/dlq', mailController.getDlq);
+app.post('/api/v1/queue/dlq/:id/retry', mailController.retryDlqJob);
+app.delete('/api/v1/queue/dlq', mailController.clearDlq);
+
 // Config Endpoints
 app.get('/api/v1/config', configController.getConfig);
 app.post('/api/v1/config/mode', configController.setMode);
@@ -84,5 +90,50 @@ server.listen(PORT, () => {
   console.log(`🎛️  [Dashboard UI] Truy cập: http://localhost:${PORT}`);
   console.log(`🧪 [Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
   console.log(`📊 [Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
+  console.log(`☠️  [DLQ Monitor] Truy cập: http://localhost:${PORT}/api/v1/queue/dlq`);
   console.log(`====================================================`);
 });
+
+// --- CƠ CHẾ GRACEFUL SHUTDOWN (TẮT MÁY CHỦ AN TOÀN) ---
+let isShuttingDown = false;
+
+async function handleShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`\n🛑 [Server] Nhận tín hiệu ${signal}. Đang thực hiện Graceful Shutdown...`);
+
+  // 1. Ngừng nhận thêm request HTTP mới
+  server.close(async () => {
+    console.log('✓ [Server] Đã đóng cổng HTTP tiếp nhận.');
+
+    try {
+      // 2. Chờ các worker đang gửi dở hoàn thành nốt
+      await queue.drainActiveWorkers(8000);
+
+      // 3. Đóng connection pool SMTP và IMAP
+      smtpLive.resetTransporter();
+      await imapListener.stopListening();
+      console.log('✓ [Server] Đã ngắt kết nối SMTP & IMAP an toàn.');
+
+      // 4. Đóng toàn bộ client WebSocket
+      wss.clients.forEach((client) => client.close());
+      console.log('✓ [Server] Đã đóng toàn bộ kết nối WebSocket.');
+
+      console.log('🎉 [Server] Toàn bộ tài nguyên đã giải phóng. Máy chủ dừng thành công!');
+      process.exit(0);
+    } catch (err) {
+      console.error('[Shutdown Error]', err.message);
+      process.exit(1);
+    }
+  });
+
+  // Phòng hờ nếu bị treo quá 10 giây thì ép dừng
+  setTimeout(() => {
+    console.error('⚠️ [Server] Hết thời gian chờ 10s. Buộc dừng tiến trình.');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));

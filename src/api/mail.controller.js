@@ -1,6 +1,6 @@
 /**
- * Mail Controller: Tiếp nhận yêu cầu gửi mail, đo SLA phản hồi < 45ms
- * và cung cấp API giám sát Hàng đợi & Circuit Breaker
+ * Mail Controller: Tiếp nhận gửi mail, kiểm tra validation RFC 5322,
+ * đo SLA phản hồi < 45ms và quản lý Dead-Letter Queue (DLQ)
  * Thành viên phụ trách: Thành (Core Backend)
  */
 
@@ -9,20 +9,27 @@ const sandboxStore = require('../core/sandbox-store');
 const queue = require('../core/queue');
 const smtpLive = require('../core/smtp-live');
 const circuitBreaker = require('../core/circuit-breaker');
+const validator = require('../core/validator');
 
 module.exports = {
   // POST /api/v1/send
   sendMail: async (req, res) => {
     const startTime = process.hrtime();
-    const { to, subject, text, html } = req.body;
 
-    if (!to) {
-      return res.status(400).json({ error: 'Trường "to" (email người nhận) là bắt buộc.' });
+    // 1. Kiểm tra tính hợp lệ của Payload & định dạng email RFC 5322
+    const validation = validator.validateSendPayload(req.body);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Dữ liệu không hợp lệ (Validation Error)',
+        details: validation.errors
+      });
     }
 
+    const { to, subject, text, html } = req.body;
     const mode = modeManager.getMode();
 
-    // 1. Chế độ SANDBOX (Dev Mode)
+    // 2. Chế độ SANDBOX (Dev Mode - Bắt mail tức thì vào RAM)
     if (mode === 'SANDBOX') {
       const saved = sandboxStore.addMail({ to, subject, text, html });
 
@@ -45,7 +52,7 @@ module.exports = {
       });
     }
 
-    // 2. Chế độ LIVE_GMAIL
+    // 3. Chế độ LIVE_GMAIL
     // Kiểm tra trạng thái Circuit Breaker
     if (!circuitBreaker.canExecute()) {
       return res.status(503).json({
@@ -55,7 +62,7 @@ module.exports = {
       });
     }
 
-    // Đưa vào Hàng đợi xử lý bất đồng bộ (Non-blocking)
+    // Đưa vào Hàng đợi xử lý bất đồng bộ (Non-blocking Queue)
     const enqueueResult = queue.enqueue(
       { to, subject, text, html },
       async () => {
@@ -85,6 +92,34 @@ module.exports = {
       queue: queue.getStats(),
       circuitBreaker: circuitBreaker.getStatus()
     });
+  },
+
+  // GET /api/v1/queue/dlq (Lấy danh sách thư hỏng trong Dead-Letter Queue)
+  getDlq: (req, res) => {
+    return res.json({
+      success: true,
+      data: queue.getDeadLetterQueue()
+    });
+  },
+
+  // POST /api/v1/queue/dlq/:id/retry (Thử gửi lại một email trong DLQ)
+  retryDlqJob: (req, res) => {
+    const { id } = req.params;
+    const retriedJob = queue.retryDeadLetterJob(id);
+    if (!retriedJob) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy job trong Dead-Letter Queue.' });
+    }
+    return res.json({
+      success: true,
+      message: `Đã đưa job ${id} trở lại hàng đợi chính để thử gửi lại.`,
+      job: retriedJob
+    });
+  },
+
+  // DELETE /api/v1/queue/dlq (Xóa toàn bộ thư trong Dead-Letter Queue)
+  clearDlq: (req, res) => {
+    const count = queue.clearDeadLetterQueue();
+    return res.json({ success: true, message: `Đã dọn dẹp ${count} job trong Dead-Letter Queue.` });
   },
 
   // GET /api/v1/mails (Lấy danh sách thư trong Sandbox)
