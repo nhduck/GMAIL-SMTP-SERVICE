@@ -120,14 +120,18 @@ flowchart TB
 ## IV. BEST PRACTICES & GIỚI HẠN THỰC TẾ (BEST PRACTICES & LIMITATIONS)
 *(Bám sát Tiêu chí 7 trong Rubric đánh giá)*
 
-### 1. Hạn chế thực tế của Gmail SMTP (Limitations)
-* **Hạn mức gửi (Quota Rate Limit):** Google giới hạn 500 email/ngày cho tài khoản cá nhân `@gmail.com` và 2,000 email/ngày cho tài khoản Google Workspace có trả phí. Không phù hợp cho Email Marketing hàng loạt (Mass Mailing).
-* **Rủi ro spam filter:** Nếu gửi số lượng lớn trong thời gian ngắn từ một địa chỉ IP lạ, Google có thể đánh dấu thư vào hòm Spam hoặc tạm khóa tài khoản.
+### 1. Hạn chế thực tế của hệ thống & Gmail SMTP (Limitations)
+* **Bảo mật API & Xác thực:** Hiện tại hệ thống phục vụ mục đích học tập nội bộ (localhost / private network), CORS đang mở tự do và chưa có cơ chế xác thực API Key/JWT. Nếu triển khai lên Production công khai, bắt buộc phải bổ sung tầng xác thực API Key để ngăn chặn việc bị kẻ gian lợi dụng gửi mail spam hoặc thay đổi thông tin cấu hình.
+* **Hàng đợi lưu trong bộ nhớ (In-memory Queue):** Hàng đợi hiện tại lưu trữ trong RAM để đảm bảo tính gọn nhẹ không phụ thuộc Redis. Hạn chế là nếu máy chủ bị tắt đột ngột (crash/kill), các job đang chờ sẽ bị mất. Hệ thống Production thực tế cần sử dụng Message Broker bền vững (Redis BullMQ hoặc RabbitMQ).
+* **Bản chất Stateless Service:** Email Gateway chỉ đóng vai trò là dịch vụ chuyển phát (Stateless Delivery Service). Service không lưu trữ dữ liệu người dùng hay trạng thái OTP trong cơ sở dữ liệu. Ứng dụng nghiệp vụ (Auth Application) phải tự quản lý việc sinh token, kiểm tra khớp OTP và vô hiệu hóa token sau khi sử dụng.
+* **Làm rõ thước đo SLA (< 45ms):** Con số SLA < 45ms (thực tế đo được ~0.15ms) là thời gian Gateway phản hồi HTTP `202 Accepted` cho ứng dụng gọi. Đây KHÔNG PHẢI là thời gian thư bay tới hòm thư người nhận (tiến trình SMTP với Google mất từ 1.5s - 3.5s chạy ngầm).
+* **Hạn mức gửi (Quota Rate Limit của Google):** Google giới hạn 500 email/ngày cho tài khoản cá nhân `@gmail.com` và 2,000 email/ngày cho tài khoản Google Workspace có trả phí. Không phù hợp cho Email Marketing hàng loạt (Mass Mailing).
 
 ### 2. Biện pháp kỹ thuật nhóm đã áp dụng (Best Practices)
-* **Circuit Breaker Pattern:** Tự động ngắt kết nối sau 5 lần lỗi liên tiếp để bảo vệ uy tín tài khoản Gmail.
+* **Circuit Breaker Pattern:** Tự động ngắt kết nối sau 5 lần lỗi liên tiếp để bảo vệ uy tín tài khoản Gmail, chống bị Google tạm khóa tài khoản.
 * **Rate Delta Limiter:** Điều tiết không vượt quá 14 email/giây trong Connection Pool.
-* **Tách rời môi trường Dev và Production:** Sử dụng Mock Sandbox khi phát triển đồ án để tránh lãng phí hạn ngạch gửi thật.
+* **Tách rời môi trường Dev và Production:** Sử dụng Mock Sandbox khi phát triển đồ án để sinh viên trong lớp chạy thử ngay mà không lo lộ mật khẩu hay bị hết hạn ngạch.
+* **Bảo mật dữ liệu OTP:** Ở chế độ Live Gmail thật, Gateway tuyệt đối không trả mã OTP trong phản hồi HTTP Response để tránh rò rỉ mã bảo mật.
 * **Khi nào nên chuyển đổi sang dịch vụ chuyên nghiệp?**
   * Trong môi trường doanh nghiệp quy mô lớn (> 10,000 email/ngày), cần chuyển sang các giải pháp Dedicated SMTP như Amazon SES, SendGrid, hoặc Postmark có hỗ trợ cấu hình bản ghi DNS (SPF, DKIM, DMARC) riêng biệt.
 

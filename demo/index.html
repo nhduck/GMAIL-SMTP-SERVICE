@@ -217,7 +217,11 @@ await fetch("http://localhost:3000/api/v1/verify-email", {
 });</pre>
 
         <div class="tip-box">
-          💡 <strong>Mẹo kiểm thử:</strong> Ở chế độ Sandbox, mở trang <a href="/" target="_blank" style="color: #38bdf8; text-decoration: underline;">Dashboard Quản Trị</a> để xem email và mã OTP nhảy lên màn hình ngay tức thì!
+          💡 <strong>Lưu ý kiến trúc SOA:</strong>
+          <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+            <li>Trong thực tế, các API này được gọi <strong>server-to-server</strong> từ backend của ứng dụng, không gọi trực tiếp từ trình duyệt của người dùng cuối.</li>
+            <li>Mã OTP chỉ hiển thị trực tiếp ở đây khi chạy chế độ <strong>Sandbox (Dev)</strong> để tiện kiểm thử. Ở chế độ Live thật, OTP chỉ nằm trong hòm thư người nhận và không bao giờ trả về qua API response.</li>
+          </ul>
         </div>
       </div>
     </div>

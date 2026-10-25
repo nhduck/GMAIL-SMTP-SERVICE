@@ -58,6 +58,10 @@ async function dispatchEmail({ to, subject, text, html, extra = {} }, req, res, 
   const latencyMs = Math.round((diff[0] * 1000 + diff[1] / 1e6) * 100) / 100;
   res.setHeader('X-Response-Time-Ms', latencyMs);
 
+  // Bảo mật: Ở chế độ LIVE_GMAIL, TUYỆT ĐỐI KHÔNG trả về mã OTP trong HTTP Response
+  const liveExtra = { ...extra };
+  delete liveExtra.otp;
+
   return res.status(202).json({
     success: true,
     message: 'Đã tiếp nhận yêu cầu gửi Gmail (Đang xử lý trong hàng đợi).',
@@ -65,7 +69,7 @@ async function dispatchEmail({ to, subject, text, html, extra = {} }, req, res, 
     queueLength: enqueueResult.queueLength,
     mode: 'LIVE_GMAIL',
     slaLatencyMs: latencyMs,
-    ...extra
+    ...liveExtra
   });
 }
 

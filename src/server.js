@@ -12,8 +12,6 @@ const { WebSocketServer } = require('ws');
 
 const mailController = require('./api/mail.controller');
 const configController = require('./api/config.controller');
-const imapListener = require('./core/imap-listener');
-const webhookDispatcher = require('./core/webhook-dispatcher');
 const queue = require('./core/queue');
 const smtpLive = require('./core/smtp-live');
 
@@ -83,10 +81,16 @@ wss.on('connection', (ws) => {
 
 // Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để sinh viên cài đặt nhẹ và nhanh nhất)
 if (process.env.ENABLE_INBOUND === 'true') {
-  imapListener.startListening((newMail) => {
-    broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
-    webhookDispatcher.dispatch(newMail);
-  });
+  try {
+    const imapListener = require('./core/imap-listener');
+    const webhookDispatcher = require('./core/webhook-dispatcher');
+    imapListener.startListening((newMail) => {
+      broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
+      webhookDispatcher.dispatch(newMail);
+    });
+  } catch (err) {
+    console.warn('[IMAP Optional] Không thể tải module IMAP:', err.message);
+  }
 }
 
 // Khởi động Server
@@ -122,10 +126,15 @@ async function handleShutdown(signal) {
       // 2. Chờ các worker đang gửi dở hoàn thành nốt
       await queue.drainActiveWorkers(8000);
 
-      // 3. Đóng connection pool SMTP và IMAP
+      // 3. Đóng connection pool SMTP và IMAP (nếu có)
       smtpLive.resetTransporter();
-      await imapListener.stopListening();
-      console.log('✓ [Server] Đã ngắt kết nối SMTP & IMAP an toàn.');
+      if (process.env.ENABLE_INBOUND === 'true') {
+        try {
+          const imapListener = require('./core/imap-listener');
+          await imapListener.stopListening();
+        } catch (e) {}
+      }
+      console.log('✓ [Server] Đã ngắt kết nối SMTP an toàn.');
 
       // 4. Đóng toàn bộ client WebSocket
       wss.clients.forEach((client) => client.close());
