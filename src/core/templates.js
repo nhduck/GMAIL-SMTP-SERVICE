@@ -3,6 +3,8 @@
  * Thành viên phụ trách: Thành (Core Backend Lead)
  */
 
+const config = require('../config');
+
 // Bộ mẫu HTML Email Responsive, hỗ trợ Mobile, Desktop và Dark mode
 const TEMPLATES = {
   // 1. Mẫu Xác Thực Tài Khoản (Account Verification)
@@ -83,7 +85,7 @@ const TEMPLATES = {
     render: (vars = {}) => {
       const name = vars.name || 'Quý khách';
       const resetUrl = vars.resetUrl || '#';
-      const expiresIn = vars.expiresInMinutes || 15;
+      const expiresIn = vars.expiresInMinutes || config.RESET_TTL_MINUTES;
       const appName = vars.appName || 'Hệ thống SOA Service';
 
       return `

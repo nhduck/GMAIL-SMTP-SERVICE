@@ -47,14 +47,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\"\n}"
+							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\",\n  \"otp\": \"654321\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/verify-email",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "v1", "verify-email"]
 						},
-						"description": "Gửi email xác thực tài khoản có mã OTP 6 số tự sinh hoặc link kích hoạt."
+						"description": "Gửi email xác thực tài khoản kèm mã OTP (Ở chế độ Live cần truyền otp hoặc verifyUrl; ở Sandbox có thể bỏ trống để tự sinh)."
 					},
 					"response": []
 				},
@@ -70,14 +70,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\",\n  \"resetUrl\": \"https://myapp.com/reset-password?token=sec_abc123\",\n  \"expiresInMinutes\": 15\n}"
+							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\",\n  \"resetUrl\": \"https://myapp.com/reset-password?token=sec_abc123\",\n  \"expiresInMinutes\": 5\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/password-reset",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "v1", "password-reset"]
 						},
-						"description": "Gửi email khôi phục mật khẩu có liên kết đặt lại và thời hạn hết hạn 15 phút."
+						"description": "Gửi email khôi phục mật khẩu có liên kết đặt lại và thời hạn hết hạn 5 phút (mặc định)."
 					},
 					"response": []
 				},

@@ -188,7 +188,7 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
   } else if (endpoint === '/api/v1/password-reset') {
     payload.name = name;
     payload.resetUrl = resetUrl || 'https://myapp.com/reset-password?token=sec_token_demo';
-    payload.expiresInMinutes = 15;
+    // Mặc định server sẽ tự áp dụng RESET_TTL_MINUTES (5 phút)
   } else {
     payload.subject = subject || 'Thông báo từ hệ thống';
     payload.html = html || '<p>Email kiểm thử nội dung HTML.</p>';

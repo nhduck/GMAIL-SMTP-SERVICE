@@ -12,8 +12,6 @@ const { WebSocketServer } = require('ws');
 
 const mailController = require('./api/mail.controller');
 const configController = require('./api/config.controller');
-const imapListener = require('./core/imap-listener');
-const webhookDispatcher = require('./core/webhook-dispatcher');
 const queue = require('./core/queue');
 const smtpLive = require('./core/smtp-live');
 
@@ -21,10 +19,27 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+const config = require('./config');
+
 // Cấu hình Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Tùy chọn bảo mật: Middleware kiểm tra API Key (chỉ kích hoạt nếu biến môi trường API_KEY được thiết lập)
+app.use('/api/v1', (req, res, next) => {
+  if (!config.API_KEY || req.path === '/health') {
+    return next();
+  }
+  const providedKey = req.headers['x-api-key'] || req.query.api_key;
+  if (!providedKey || providedKey !== config.API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Truy cập bị từ chối: Header "X-API-Key" không hợp lệ hoặc bị thiếu.'
+    });
+  }
+  next();
+});
 
 // Phục vụ thư mục static (Dashboard & SDK)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -83,10 +98,16 @@ wss.on('connection', (ws) => {
 
 // Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để sinh viên cài đặt nhẹ và nhanh nhất)
 if (process.env.ENABLE_INBOUND === 'true') {
-  imapListener.startListening((newMail) => {
-    broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
-    webhookDispatcher.dispatch(newMail);
-  });
+  try {
+    const imapListener = require('./core/imap-listener');
+    const webhookDispatcher = require('./core/webhook-dispatcher');
+    imapListener.startListening((newMail) => {
+      broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
+      webhookDispatcher.dispatch(newMail);
+    });
+  } catch (err) {
+    console.warn('[IMAP Optional] Không thể tải module IMAP:', err.message);
+  }
 }
 
 // Khởi động Server
@@ -122,10 +143,15 @@ async function handleShutdown(signal) {
       // 2. Chờ các worker đang gửi dở hoàn thành nốt
       await queue.drainActiveWorkers(8000);
 
-      // 3. Đóng connection pool SMTP và IMAP
+      // 3. Đóng connection pool SMTP và IMAP (nếu có)
       smtpLive.resetTransporter();
-      await imapListener.stopListening();
-      console.log('✓ [Server] Đã ngắt kết nối SMTP & IMAP an toàn.');
+      if (process.env.ENABLE_INBOUND === 'true') {
+        try {
+          const imapListener = require('./core/imap-listener');
+          await imapListener.stopListening();
+        } catch (e) {}
+      }
+      console.log('✓ [Server] Đã ngắt kết nối SMTP an toàn.');
 
       // 4. Đóng toàn bộ client WebSocket
       wss.clients.forEach((client) => client.close());
