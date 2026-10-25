@@ -328,7 +328,7 @@ await fetch("http://localhost:3000/api/v1/password-reset", {
         const data = await res.json();
         if (res.ok) {
           status.className = 'status-msg success';
-          status.innerHTML = `✓ Đã gửi email đặt lại mật khẩu đến <b>${email}</b> (Hiệu lực: ${data.expiresInMinutes || 15} phút). Xem tại <a href="/" target="_blank">Dashboard</a>.`;
+          status.innerHTML = `✓ Đã gửi email đặt lại mật khẩu đến <b>${email}</b> (Hiệu lực: ${data.expiresInMinutes || 5} phút). Xem tại <a href="/" target="_blank">Dashboard</a>.`;
         } else {
           status.className = 'status-msg error';
           status.innerText = `✕ Lỗi: ${data.error}`;

@@ -9,7 +9,7 @@
 | Yêu cầu đề bài | Tình trạng trước đây | Tình trạng sau nâng cấp | Đánh giá |
 | :--- | :--- | :--- | :---: |
 | **1. Account Verification** | Chưa có endpoint, không sinh OTP/Token | Đã có `POST /api/v1/verify-email`, tự sinh OTP 6 số hoặc link kích hoạt, render template responsive | ✅ **Hoàn thành 100%** |
-| **2. Password Reset** | Chưa có endpoint, không có link reset, không có TTL | Đã có `POST /api/v1/password-reset`, hỗ trợ link reset token + thời hạn 15 phút an toàn | ✅ **Hoàn thành 100%** |
+| **2. Password Reset** | Chưa có endpoint, không có link reset, không có TTL | Đã có `POST /api/v1/password-reset`, hỗ trợ link reset token + thời hạn 5 phút an toàn (chuẩn đề bài) | ✅ **Hoàn thành 100%** |
 | **3. HTML Email** | Nhận HTML thô qua `/send`, không có template | Đã có `templates.js` với 3 mẫu chuẩn: `verify-email`, `password-reset`, `custom-html` | ✅ **Hoàn thành 100%** |
 
 ---
@@ -37,8 +37,8 @@
 | # | Hạng mục công việc | Người phụ trách | Hạn hoàn thành | Trạng thái |
 | :-: | :--- | :---: | :---: | :---: |
 | 1 | Xây dựng module `templates.js` (Verify, Reset, Custom HTML) | **Thành** | Ngày 1 | ✅ Đã xong |
-| 2 | Endpoint `POST /api/v1/verify-email` (tự sinh OTP 6 số) | **Thành** | Ngày 1 | ✅ Đã xong |
-| 3 | Endpoint `POST /api/v1/password-reset` (link + TTL 15 phút) | **Thành** | Ngày 1 | ✅ Đã xong |
+| 2 | Endpoint `POST /api/v1/verify-email` (tự sinh OTP ở Sandbox; nhận OTP/link ở Live) | **Thành** | Ngày 1 | ✅ Đã xong |
+| 3 | Endpoint `POST /api/v1/password-reset` (link + TTL 5 phút chuẩn hóa qua config) | **Thành** | Ngày 1 | ✅ Đã xong |
 | 4 | Cập nhật `/api/v1/send` nhận template và biến động | **Thành** | Ngày 1 | ✅ Đã xong |
 | 5 | Nâng cấp Dashboard: 3 nút preset demo Verify, Reset, HTML | **Đạt** | Ngày 2 | ✅ Đã xong |
 | 6 | Nâng cấp trang `demo/index.html` thành App Auth mô phỏng Đăng ký & Quên mật khẩu | **Đạt** | Ngày 2 | ✅ Đã xong |

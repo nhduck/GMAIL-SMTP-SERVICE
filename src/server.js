@@ -19,10 +19,27 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+const config = require('./config');
+
 // Cấu hình Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Tùy chọn bảo mật: Middleware kiểm tra API Key (chỉ kích hoạt nếu biến môi trường API_KEY được thiết lập)
+app.use('/api/v1', (req, res, next) => {
+  if (!config.API_KEY || req.path === '/health') {
+    return next();
+  }
+  const providedKey = req.headers['x-api-key'] || req.query.api_key;
+  if (!providedKey || providedKey !== config.API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Truy cập bị từ chối: Header "X-API-Key" không hợp lệ hoặc bị thiếu.'
+    });
+  }
+  next();
+});
 
 // Phục vụ thư mục static (Dashboard & SDK)
 app.use(express.static(path.join(__dirname, 'public')));

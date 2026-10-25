@@ -4,7 +4,7 @@
 > **Chủ đề Seminar:** **Email Service Integration (Gmail SMTP)**  
 > **Trọng tâm đề bài:**
 > 1. ✅ **Account Verification** (Xác thực tài khoản qua OTP hoặc Link kích hoạt)
-> 2. ✅ **Password Reset** (Đặt lại mật khẩu qua liên kết có thời hạn an toàn 15 phút)
+> 2. ✅ **Password Reset** (Đặt lại mật khẩu qua liên kết có thời hạn an toàn 5 phút)
 > 3. ✅ **HTML Email** (Mẫu email đồ họa Responsive, truyền biến động `{{name}}`, `{{otp}}`)
 
 ---
@@ -71,28 +71,31 @@ Khi cần gửi email thật ra ngoài hòm thư, bạn chỉ cần lấy **Mậ
 Dự án bất kỳ của sinh viên (Node.js, Python, Java, PHP, C#) chỉ cần gọi 1 trong 3 endpoint sau:
 
 ### 1. Xác thực tài khoản (Account Verification)
+> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số phục vụ demo nhanh.
 ```javascript
-// Tự sinh mã OTP 6 số và gửi thư xác thực
+// Gửi mã OTP xác thực tài khoản
 await fetch("http://localhost:3000/api/v1/verify-email", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     to: "student@tdtu.edu.vn",
-    name: "Nguyễn Văn A"
+    name: "Nguyễn Văn A",
+    otp: "123456" // Ứng dụng tự sinh OTP (Sandbox có thể bỏ trống để tự sinh)
   })
 });
 ```
 
 ### 2. Đặt lại mật khẩu (Password Reset)
 ```javascript
-// Gửi email đặt lại mật khẩu kèm link có thời hạn an toàn 15 phút
+// Gửi email đặt lại mật khẩu kèm link có thời hạn an toàn 5 phút (mặc định)
 await fetch("http://localhost:3000/api/v1/password-reset", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     to: "student@tdtu.edu.vn",
     name: "Nguyễn Văn A",
-    resetUrl: "https://myapp.com/reset-password?token=sec_token_998811"
+    resetUrl: "https://myapp.com/reset-password?token=sec_token_998811",
+    expiresInMinutes: 5 // Tùy chọn: số nguyên từ 1 đến 1440 phút (mặc định 5 phút)
   })
 });
 ```

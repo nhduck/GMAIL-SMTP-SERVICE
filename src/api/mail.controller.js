@@ -4,6 +4,7 @@
  * Thành viên phụ trách: Thành (Core Backend)
  */
 
+const config = require('../config');
 const modeManager = require('../core/mode-manager');
 const sandboxStore = require('../core/sandbox-store');
 const queue = require('../core/queue');
@@ -83,8 +84,19 @@ module.exports = {
       return res.status(400).json({ success: false, error: 'Địa chỉ email người nhận ("to") không hợp lệ.' });
     }
 
-    // Nếu không truyền verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số
+    const mode = modeManager.getMode();
     let otp = req.body.otp;
+
+    // Ở chế độ LIVE_GMAIL, nếu không truyền otp hoặc verifyUrl thì báo lỗi 400
+    // vì Service là stateless, không tự lưu OTP và không trả OTP về response ở Live mode
+    if (mode === 'LIVE_GMAIL' && !verifyUrl && !otp) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ở chế độ Live Gmail, ứng dụng nghiệp vụ phải tự sinh và truyền "otp" hoặc "verifyUrl" để có thể kiểm tra xác thực sau đó.'
+      });
+    }
+
+    // Ở chế độ Sandbox: nếu không có verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số để tiện demo
     if (!verifyUrl && !otp) {
       otp = Math.floor(100000 + Math.random() * 900000).toString();
     }
@@ -127,7 +139,19 @@ module.exports = {
       return res.status(400).json({ success: false, error: 'Trường "resetUrl" (liên kết đặt lại mật khẩu) là bắt buộc.' });
     }
 
-    const ttl = expiresInMinutes || 15;
+    // Kiểm tra tính hợp lệ của thời hạn (TTL)
+    let ttl = config.RESET_TTL_MINUTES;
+    if (expiresInMinutes !== undefined) {
+      const parsed = Number(expiresInMinutes);
+      if (!Number.isInteger(parsed) || parsed < config.MIN_RESET_TTL_MINUTES || parsed > config.MAX_RESET_TTL_MINUTES) {
+        return res.status(400).json({
+          success: false,
+          error: `Trường "expiresInMinutes" phải là số nguyên từ ${config.MIN_RESET_TTL_MINUTES} đến ${config.MAX_RESET_TTL_MINUTES} phút.`
+        });
+      }
+      ttl = parsed;
+    }
+
     const rendered = templates.render('password-reset', {
       name: name || 'Bạn',
       resetUrl,

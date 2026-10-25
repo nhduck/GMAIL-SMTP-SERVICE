@@ -81,7 +81,7 @@ flowchart TB
    * Tự động sinh mã kích hoạt (OTP 6 số) hoặc Token URL kích hoạt tài khoản (`https://app.com/verify?token=...`).
    * Gửi email thông báo ngay sau khi đăng ký thành công với giao diện chuyên nghiệp.
 2. **Password Reset (Đặt lại mật khẩu):**
-   * Tạo liên kết phục hồi có gắn thời hạn an toàn (TTL: 15 phút).
+   * Tạo liên kết phục hồi có gắn thời hạn an toàn (TTL: 5 phút theo chuẩn đề bài, cấu hình linh hoạt).
    * Gửi cảnh báo bảo mật tới người dùng (thời gian yêu cầu, thiết bị).
 3. **HTML Email (Mẫu thư giao diện đồ họa cao cấp):**
    * Định dạng HTML Responsive tương thích trên mọi màn hình (Desktop, Mobile, Dark Mode).
@@ -121,9 +121,9 @@ flowchart TB
 *(Bám sát Tiêu chí 7 trong Rubric đánh giá)*
 
 ### 1. Hạn chế thực tế của hệ thống & Gmail SMTP (Limitations)
-* **Bảo mật API & Xác thực:** Hiện tại hệ thống phục vụ mục đích học tập nội bộ (localhost / private network), CORS đang mở tự do và chưa có cơ chế xác thực API Key/JWT. Nếu triển khai lên Production công khai, bắt buộc phải bổ sung tầng xác thực API Key để ngăn chặn việc bị kẻ gian lợi dụng gửi mail spam hoặc thay đổi thông tin cấu hình.
+* **Bảo mật API & Xác thực:** Mặc định hệ thống không yêu cầu xác thực để sinh viên trong lớp có thể tích hợp ngay mà không gặp cản trở môi trường. Tuy nhiên, để đảm bảo tính an toàn trong môi trường Production, hệ thống đã tích hợp sẵn **Middleware kiểm tra API Key tùy chọn (`X-API-Key`)** thông qua biến môi trường `API_KEY`. Khi được cấu hình, mọi request gửi đến Gateway bắt buộc phải đính kèm Header này, nếu không sẽ bị từ chối với mã lỗi `401 Unauthorized`.
 * **Hàng đợi lưu trong bộ nhớ (In-memory Queue):** Hàng đợi hiện tại lưu trữ trong RAM để đảm bảo tính gọn nhẹ không phụ thuộc Redis. Hạn chế là nếu máy chủ bị tắt đột ngột (crash/kill), các job đang chờ sẽ bị mất. Hệ thống Production thực tế cần sử dụng Message Broker bền vững (Redis BullMQ hoặc RabbitMQ).
-* **Bản chất Stateless Service:** Email Gateway chỉ đóng vai trò là dịch vụ chuyển phát (Stateless Delivery Service). Service không lưu trữ dữ liệu người dùng hay trạng thái OTP trong cơ sở dữ liệu. Ứng dụng nghiệp vụ (Auth Application) phải tự quản lý việc sinh token, kiểm tra khớp OTP và vô hiệu hóa token sau khi sử dụng.
+* **Bản chất Stateless Service & Quản lý OTP:** Email Gateway là một dịch vụ chuyển phát không lưu trạng thái (Stateless Delivery Service). Service không lưu trữ dữ liệu người dùng hay trạng thái OTP trong cơ sở dữ liệu. Vì vậy, ở chế độ Live Gmail thật, ứng dụng nghiệp vụ (Auth Application) phải tự sinh OTP, lưu vào DB/Redis để đối soát và truyền sang cho Gateway gửi. Gateway không tự sinh OTP ở chế độ Live và tuyệt đối không trả OTP về HTTP response nhằm loại trừ hoàn toàn nguy cơ rò rỉ mã bí mật.
 * **Làm rõ thước đo SLA (< 45ms):** Con số SLA < 45ms (thực tế đo được ~0.15ms) là thời gian Gateway phản hồi HTTP `202 Accepted` cho ứng dụng gọi. Đây KHÔNG PHẢI là thời gian thư bay tới hòm thư người nhận (tiến trình SMTP với Google mất từ 1.5s - 3.5s chạy ngầm).
 * **Hạn mức gửi (Quota Rate Limit của Google):** Google giới hạn 500 email/ngày cho tài khoản cá nhân `@gmail.com` và 2,000 email/ngày cho tài khoản Google Workspace có trả phí. Không phù hợp cho Email Marketing hàng loạt (Mass Mailing).
 
@@ -147,3 +147,11 @@ flowchart TB
 
 3. **Hỏi:** *Nếu Gmail bị rớt mạng hoặc người dùng nhập sai email thì sao?*  
    **Trả lời:** Hệ thống có **Exponential Backoff Retry** thử lại 3 lần với khoảng cách thời gian tăng dần (1s, 2s, 4s). Nếu vẫn không được, thư được chuyển an toàn vào **Dead-Letter Queue (DLQ)** để quản trị viên kiểm tra lỗi và bấm nút gửi lại thủ công.
+
+4. **Hỏi:** *Ai chịu trách nhiệm kiểm tra thời hạn hết hạn 5 phút (TTL) của liên kết đặt lại mật khẩu?*  
+   **Trả lời:** Thời hạn 5 phút (hoặc giá trị truyền qua `expiresInMinutes`) hiển thị trong nội dung email mang tính thông báo cho người dùng. Vì Email Gateway tuân thủ nguyên lý **Stateless Service** (không có CSDL riêng lưu trữ phiên làm việc để đạt tốc độ phản hồi cực nhanh ~0.15ms), nên **ứng dụng nghiệp vụ (Auth Service của sinh viên)** khi tạo Reset Token phải gán timestamp hết hạn (ví dụ qua JWT exp hoặc lưu Redis) và tự kiểm tra, từ chối token nếu quá hạn khi người dùng click vào link.
+
+5. **Hỏi:** *Tại sao ở chế độ Live Gmail thật, Gateway không tự sinh OTP và trả về như Sandbox?*  
+   **Trả lời:** Vì nguyên tắc an ninh bảo mật và tính toàn vẹn của mô hình dịch vụ:
+   - **An ninh:** Tuyệt đối không trả OTP về phản hồi HTTP trên mạng (zero credential leak). OTP chỉ được phép gửi duy nhất vào hòm thư người nhận.
+   - **Kiến trúc Stateless:** Nếu Gateway tự sinh OTP mà không lưu CSDL, Gateway cũng không thể cung cấp API xác thực OTP sau đó. Do đó, chuẩn SOA quy định ứng dụng quản lý người dùng phải tự sinh OTP, lưu tạm để đối chiếu khi người dùng nhập mã, và chỉ nhờ Gateway thực hiện nhiệm vụ duy nhất là gửi thư.

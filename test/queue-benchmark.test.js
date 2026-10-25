@@ -108,10 +108,14 @@ async function runBenchmark() {
   const hasOtp = verifyTpl.html.includes('654321') && verifyTpl.html.includes('Nguyễn Văn A');
   console.log(`Render template Account Verification (OTP): ${hasOtp ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
 
-  // 2. Password Reset
-  const resetTpl = templates.render('password-reset', { name: 'Nguyễn Văn A', resetUrl: 'https://myapp.com/reset', expiresInMinutes: 15 });
-  const hasReset = resetTpl.html.includes('https://myapp.com/reset') && resetTpl.html.includes('15 phút');
-  console.log(`Render template Password Reset (TTL 15m): ${hasReset ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
+  // 2. Password Reset (Kiểm tra mặc định 5 phút và tùy chỉnh)
+  const resetTplDefault = templates.render('password-reset', { name: 'Nguyễn Văn A', resetUrl: 'https://myapp.com/reset' });
+  const hasResetDefault = resetTplDefault.html.includes('https://myapp.com/reset') && resetTplDefault.html.includes('5 phút');
+  console.log(`Render template Password Reset (Mặc định TTL 5 phút): ${hasResetDefault ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
+
+  const resetTplCustom = templates.render('password-reset', { name: 'Nguyễn Văn A', resetUrl: 'https://myapp.com/reset', expiresInMinutes: 30 });
+  const hasResetCustom = resetTplCustom.html.includes('https://myapp.com/reset') && resetTplCustom.html.includes('30 phút');
+  console.log(`Render template Password Reset (Tùy chỉnh TTL 30 phút): ${hasResetCustom ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
 
   // 3. Custom HTML
   const customTpl = templates.render('custom-html', { title: 'Chào Mừng', content: '<p>Xin chào</p>' });

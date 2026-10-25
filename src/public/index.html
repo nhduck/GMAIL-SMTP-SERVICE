@@ -143,18 +143,19 @@
         <p class="desc">Bất kỳ dự án Web/Backend nào của sinh viên chỉ cần gọi 1 trong 3 endpoint chuẩn REST sau:</p>
 
         <h3>1. Xác thực tài khoản (Account Verification)</h3>
-        <pre><code>// Gọi API xác thực tài khoản (tự sinh OTP 6 số nếu không truyền verifyUrl)
+        <pre><code>// Gọi API xác thực tài khoản (ở Live mode cần truyền otp hoặc verifyUrl; ở Sandbox có thể bỏ trống để tự sinh)
 await fetch("http://localhost:3000/api/v1/verify-email", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     to: "student@tdtu.edu.vn",
-    name: "Nguyễn Văn A"
+    name: "Nguyễn Văn A",
+    otp: "123456" // Ứng dụng nghiệp vụ tự sinh OTP để lưu DB
   })
 });</code></pre>
 
         <h3>2. Đặt lại mật khẩu (Password Reset)</h3>
-        <pre><code>// Gửi link đặt lại mật khẩu với thời hạn an toàn 15 phút
+        <pre><code>// Gửi link đặt lại mật khẩu với thời hạn an toàn 5 phút (mặc định)
 await fetch("http://localhost:3000/api/v1/password-reset", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
