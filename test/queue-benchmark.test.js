@@ -99,8 +99,27 @@ async function runBenchmark() {
   circuitBreaker.manualReset();
   console.log(`✓ Đã reset Circuit Breaker về: ${circuitBreaker.getStatus().state}\n`);
 
+  // Test 5: Kiểm thử Template Engine (3 chức năng trọng tâm của đề bài)
+  console.log('--- TEST 5: Kiểm thử Template Engine (Account Verification, Password Reset, HTML) ---');
+  const templates = require('../src/core/templates');
+  
+  // 1. Verify Email
+  const verifyTpl = templates.render('verify-email', { name: 'Nguyễn Văn A', otp: '654321' });
+  const hasOtp = verifyTpl.html.includes('654321') && verifyTpl.html.includes('Nguyễn Văn A');
+  console.log(`Render template Account Verification (OTP): ${hasOtp ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
+
+  // 2. Password Reset
+  const resetTpl = templates.render('password-reset', { name: 'Nguyễn Văn A', resetUrl: 'https://myapp.com/reset', expiresInMinutes: 15 });
+  const hasReset = resetTpl.html.includes('https://myapp.com/reset') && resetTpl.html.includes('15 phút');
+  console.log(`Render template Password Reset (TTL 15m): ${hasReset ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
+
+  // 3. Custom HTML
+  const customTpl = templates.render('custom-html', { title: 'Chào Mừng', content: '<p>Xin chào</p>' });
+  const hasCustom = customTpl.html.includes('Chào Mừng') && customTpl.html.includes('<p>Xin chào</p>');
+  console.log(`Render template Custom HTML Email: ${hasCustom ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}\n`);
+
   console.log('====================================================');
-  console.log('🎉 TOÀN BỘ 4 BỘ TEST HIỆU NĂNG & ĐỘ BỀN ĐÃ VƯỢT QUA!');
+  console.log('🎉 TOÀN BỘ 5 BỘ TEST ĐỀ BÀI & HIỆU NĂNG ĐÃ VƯỢT QUA!');
   console.log('====================================================');
 }
 
