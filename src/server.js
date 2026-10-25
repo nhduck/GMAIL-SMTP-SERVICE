@@ -55,6 +55,11 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+// Core Assignment Endpoints (Account Verification, Password Reset, HTML Email Templates)
+app.post('/api/v1/verify-email', mailController.verifyEmail);
+app.post('/api/v1/password-reset', mailController.passwordReset);
+app.get('/api/v1/templates', mailController.getTemplates);
+
 // Mail Endpoints
 app.post('/api/v1/send', mailController.sendMail);
 app.get('/api/v1/mails', mailController.getMails);
@@ -76,11 +81,13 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Kết nối WebSocket thành công tới Email Hub.' }));
 });
 
-// Khởi chạy IMAP Listener (khi nhận mail sẽ kích hoạt webhook & phát WebSocket)
-imapListener.startListening((newMail) => {
-  broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
-  webhookDispatcher.dispatch(newMail);
-});
+// Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để sinh viên cài đặt nhẹ và nhanh nhất)
+if (process.env.ENABLE_INBOUND === 'true') {
+  imapListener.startListening((newMail) => {
+    broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
+    webhookDispatcher.dispatch(newMail);
+  });
+}
 
 // Khởi động Server
 const PORT = process.env.PORT || 3000;

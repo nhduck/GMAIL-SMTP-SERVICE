@@ -62,26 +62,50 @@
     <!-- TAB 2: Test Send -->
     <section id="testTab" class="tab-content">
       <div class="card card-form">
-        <h2>Kiểm Thử Gửi Email Tức Thì</h2>
-        <p class="desc">Thử nghiệm gửi email qua API Gateway của hệ thống.</p>
+        <h2>Kiểm Thử 3 Chức Năng Cốt Lõi (Seminar Demo)</h2>
+        <p class="desc">Chọn nhanh kịch bản kiểm thử theo đúng yêu cầu đề bài:</p>
+        
+        <!-- Preset Buttons -->
+        <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-preset active" id="btnPresetVerify">1️⃣ Account Verification (OTP)</button>
+          <button type="button" class="btn btn-preset" id="btnPresetReset">2️⃣ Password Reset (Link)</button>
+          <button type="button" class="btn btn-preset" id="btnPresetCustom">3️⃣ Custom HTML Email</button>
+        </div>
+
         <form id="testSendForm">
+          <input type="hidden" id="selectedEndpoint" value="/api/v1/verify-email" />
+          
           <div class="form-group">
             <label>Gửi đến (To):</label>
-            <input type="email" id="testTo" required placeholder="nhanvien@example.com" value="test@example.com" />
+            <input type="email" id="testTo" required placeholder="nhanvien@example.com" value="student@tdtu.edu.vn" />
           </div>
-          <div class="form-group">
+
+          <div class="form-group" id="groupName">
+            <label>Tên người nhận (Name):</label>
+            <input type="text" id="testName" placeholder="Nguyễn Văn A" value="Nguyễn Văn A" />
+          </div>
+
+          <div class="form-group" id="groupSubject" style="display: none;">
             <label>Tiêu đề (Subject):</label>
-            <input type="text" id="testSubject" required placeholder="Xác thực OTP hoặc Thông báo" value="Mã xác thực OTP của bạn là: 8921" />
+            <input type="text" id="testSubject" placeholder="Tiêu đề email..." value="" />
           </div>
-          <div class="form-group">
+
+          <div class="form-group" id="groupVerifyUrl" style="display: none;">
+            <label>Link xác thực (Tùy chọn - nếu bỏ trống sẽ tự sinh mã OTP 6 số):</label>
+            <input type="url" id="testVerifyUrl" placeholder="https://myapp.com/verify?token=xyz" value="" />
+          </div>
+
+          <div class="form-group" id="groupResetUrl" style="display: none;">
+            <label>Link đặt lại mật khẩu (Reset URL):</label>
+            <input type="url" id="testResetUrl" placeholder="https://myapp.com/reset-password?token=abc123xyz" value="https://myapp.com/reset-password?token=sec_token_998811" />
+          </div>
+
+          <div class="form-group" id="groupHtml" style="display: none;">
             <label>Nội dung HTML:</label>
-            <textarea id="testHtml" rows="5" placeholder="Nhập nội dung HTML..."><div style="font-family:sans-serif;padding:20px;background:#f8fafc;border-radius:12px;">
-  <h2 style="color:#2563eb;">Chào mừng bạn đến với hệ thống!</h2>
-  <p>Mã kích hoạt tài khoản của bạn là:</p>
-  <div style="font-size:24px;font-weight:bold;letter-spacing:4px;color:#0f172a;">8921</div>
-</div></textarea>
+            <textarea id="testHtml" rows="5" placeholder="Nhập nội dung HTML..."></textarea>
           </div>
-          <button type="submit" id="btnSendTest" class="btn btn-primary">Bấm Gửi Ngay (<span id="currentModeLabel">Sandbox</span>)</button>
+
+          <button type="submit" id="btnSendTest" class="btn btn-primary" style="margin-top: 10px;">Bấm Gửi Ngay (<span id="currentModeLabel">Sandbox</span>)</button>
           <div id="testStatus" class="status-box"></div>
         </form>
       </div>
@@ -115,28 +139,40 @@
     <!-- TAB 4: Code Integration -->
     <section id="codeTab" class="tab-content">
       <div class="card">
-        <h2>Tích Hợp 1 Dòng Vào Dự Án Khác (Developer Experience)</h2>
-        <p class="desc">Mọi dự án Web/Backend chỉ cần copy 1 trong các đoạn mã sau là dùng được ngay:</p>
+        <h2>Tích Hợp Dịch Vụ Vào Dự Án Khác (Developer Experience)</h2>
+        <p class="desc">Bất kỳ dự án Web/Backend nào của sinh viên chỉ cần gọi 1 trong 3 endpoint chuẩn REST sau:</p>
 
-        <h3>1. Web Component (Chuẩn 1 dòng như Bootstrap - HTML thuần)</h3>
-        <pre><code>&lt;!-- Dán vào thẻ &lt;head&gt; hoặc &lt;body&gt; --&gt;
-&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
-&lt;mail-widget target="admin@mydomain.com" title="Liên Hệ Với Chúng Tôi"&gt;&lt;/mail-widget&gt;</code></pre>
+        <h3>1. Xác thực tài khoản (Account Verification)</h3>
+        <pre><code>// Gọi API xác thực tài khoản (tự sinh OTP 6 số nếu không truyền verifyUrl)
+await fetch("http://localhost:3000/api/v1/verify-email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "student@tdtu.edu.vn",
+    name: "Nguyễn Văn A"
+  })
+});</code></pre>
 
-        <h3>2. JavaScript SDK (Dành cho React/Vue/Frontend SPA)</h3>
-        <pre><code>&lt;script src="http://localhost:3000/mail-agent.min.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-  MailAgent.send({
-    to: "customer@gmail.com",
-    subject: "Mã OTP",
-    html: "&lt;b&gt;123456&lt;/b&gt;"
-  });
-&lt;/script&gt;</code></pre>
+        <h3>2. Đặt lại mật khẩu (Password Reset)</h3>
+        <pre><code>// Gửi link đặt lại mật khẩu với thời hạn an toàn 15 phút
+await fetch("http://localhost:3000/api/v1/password-reset", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "student@tdtu.edu.vn",
+    name: "Nguyễn Văn A",
+    resetUrl: "https://myapp.com/reset-password?token=sec_abc123"
+  })
+});</code></pre>
 
-        <h3>3. REST API / cURL (Dành cho Backend Node, Python, Java, PHP)</h3>
+        <h3>3. Gửi HTML Email theo Mẫu (HTML Email Template)</h3>
         <pre><code>curl -X POST http://localhost:3000/api/v1/send \
   -H "Content-Type: application/json" \
-  -d '{"to": "dev@example.com", "subject": "Test", "html": "Hello SOA"}'</code></pre>
+  -d '{"to": "dev@tdtu.edu.vn", "template": "custom-html", "variables": {"title": "Chào mừng!", "content": "<p>Nội dung HTML</p>"}}'</code></pre>
+
+        <h3 style="margin-top: 30px; opacity: 0.7;">✨ Phần mở rộng: Nhúng Web Component 1 dòng (HTML)</h3>
+        <pre><code>&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
+&lt;mail-widget target="admin@cuahang.com" title="Liên Hệ"&gt;&lt;/mail-widget&gt;</code></pre>
       </div>
     </section>
   </div>
