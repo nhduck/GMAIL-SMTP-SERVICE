@@ -1,5 +1,5 @@
 /**
- * Auth-Email-Service: Hybrid Email-as-a-Service Gateway
+ * Gmail-SMTP-Service: Hybrid Email-as-a-Service Gateway
  * Entrypoint máy chủ chính tích hợp Graceful Shutdown & Dead-Letter Queue
  */
 
@@ -41,8 +41,14 @@ app.use('/api/v1', (req, res, next) => {
   next();
 });
 
-// Phục vụ thư mục static (Dashboard & SDK)
-app.use(express.static(path.join(__dirname, 'public')));
+// Phục vụ thư mục static (Dashboard & SDK) với no-cache để tránh dính cache trình duyệt khi demo
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  }
+}));
 app.use('/demo', express.static(path.join(__dirname, '../demo')));
 
 // Cơ chế phát tin WebSocket Broadcast
@@ -66,7 +72,7 @@ app.get('/api/v1/health', (req, res) => {
   res.json({
     status: 'UP',
     timestamp: new Date().toISOString(),
-    service: 'Auth-Email-Service (SOA Gateway)'
+    service: 'Gmail-SMTP-Service (SOA Gateway)'
   });
 });
 

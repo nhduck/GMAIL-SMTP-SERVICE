@@ -1,6 +1,6 @@
 @echo off
-title Auth-Email Hub - 1-Click Starter
-echo     EMAIL GATEWAY - SOA
+title Gmail-SMTP-Service - 1-Click Starter
+echo     EMAIL GATEWAY
 echo.
 
 node -v >nul 2>&1

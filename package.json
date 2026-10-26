@@ -1,5 +1,5 @@
 {
-  "name": "auth-email-service",
+  "name": "gmail-smtp-service",
   "version": "1.0.0",
   "description": "Hybrid Email-as-a-Service Gateway (SOA Gmail SMTP & IMAP Hub)",
   "main": "src/server.js",
@@ -8,7 +8,9 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node test/queue-benchmark.test.js",
-    "stress": "node test/stress-test.js"
+    "test:e2e": "node test/demo-e2e.test.js",
+    "stress": "node test/stress-test.js",
+    "demo": "node scripts/run-demo.js"
   },
   "keywords": [
     "email",

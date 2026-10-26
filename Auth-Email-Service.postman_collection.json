@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "a90f38b2-d812-4299-8cf9-7981e428c0b1",
-		"name": "Auth-Email-Service (SOA Gateway)",
+		"name": "Gmail-SMTP-Service (SOA Gateway)",
 		"description": "Bộ sưu tập API hoàn chỉnh cho hệ thống Hybrid Email-as-a-Service Gateway (Gmail SMTP & IMAP Hub chuẩn SOA).\nDành cho cả 3 thành viên (Thành, Đức, Đạt) kiểm thử và tích hợp.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -101,6 +101,29 @@
 							"path": ["api", "v1", "send"]
 						},
 						"description": "Gửi email HTML định dạng sẵn theo template của Gateway."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Send Action Email (Nút Duyệt / Từ Chối)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"to\": \"manager@demo.local\",\n  \"subject\": \"Đơn Xin Nghỉ Phép Cần Phê Duyệt\",\n  \"template\": \"action-email\",\n  \"variables\": {\n    \"title\": \"Đơn Xin Nghỉ Phép Cần Phê Duyệt\",\n    \"greeting\": \"Chào Quản lý,\",\n    \"intro\": \"Nhân viên Nguyễn Văn A vừa gửi một đơn xin nghỉ phép mới trên hệ thống:\",\n    \"badge\": {\n      \"text\": \"CHỜ PHÊ DUYỆT\",\n      \"tone\": \"warning\"\n    },\n    \"details\": [\n      { \"label\": \"Nhân viên\", \"value\": \"Nguyễn Văn A (a@tdtu.edu.vn)\" },\n      { \"label\": \"Thời gian nghỉ\", \"value\": \"Từ 05/11 đến 07/11 (3 ngày)\" },\n      { \"label\": \"Lý do xin nghỉ\", \"value\": \"Nghỉ phép thường niên\" }\n    ],\n    \"primaryButton\": {\n      \"text\": \"Duyệt Đơn\",\n      \"url\": \"http://localhost:4000/decision/demo_token_123?action=approve\"\n    },\n    \"secondaryButton\": {\n      \"text\": \"Từ Chối\",\n      \"url\": \"http://localhost:4000/decision/demo_token_123?action=reject\"\n    },\n    \"footer\": \"Liên kết phê duyệt an toàn dùng 1 lần trong 24 giờ.\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/send",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "send"]
+						},
+						"description": "Gửi email hành động tương tác (bảng chi tiết, nhãn trạng thái và 2 nút bấm Duyệt / Từ chối)."
 					},
 					"response": []
 				},

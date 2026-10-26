@@ -84,16 +84,7 @@ module.exports = {
     const mode = modeManager.getMode();
     let otp = req.body.otp;
 
-    // Ở chế độ LIVE_GMAIL, nếu không truyền otp hoặc verifyUrl thì báo lỗi 400
-    // vì Service là stateless, không tự lưu OTP và không trả OTP về response ở Live mode
-    if (mode === 'LIVE_GMAIL' && !verifyUrl && !otp) {
-      return res.status(400).json({
-        success: false,
-        error: 'Ở chế độ Live Gmail, ứng dụng nghiệp vụ phải tự sinh và truyền "otp" hoặc "verifyUrl" để có thể kiểm tra xác thực sau đó.'
-      });
-    }
-
-    // Ở chế độ Sandbox: nếu không có verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số (cái này để nhóm tiên demo thôi ạ)
+    // Nếu không có verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số để gửi qua email
     if (!verifyUrl && !otp) {
       otp = Math.floor(100000 + Math.random() * 900000).toString();
     }

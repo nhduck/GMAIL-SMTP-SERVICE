@@ -4,12 +4,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Auth-Email Hub | Hybrid Email-as-a-Service Gateway</title>
+  <title>Gmail-SMTP-Service | Hybrid Email-as-a-Service Gateway</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet">
+  <script>
+    // Tự động gỡ bỏ mọi Service Worker bị lưu cache từ các dự án khác ở cổng 3000
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (var r of registrations) { r.unregister(); }
+      });
+    }
+  </script>
 </head>
 
 <body>
@@ -17,10 +25,10 @@
     <!-- Header -->
     <header class="app-header">
       <div class="logo-area">
-        <div class="logo-icon">⚡</div>
+        <div class="logo-icon">✉️</div>
         <div>
-          <h1>Auth-Email Hub</h1>
-          <p class="subtitle">Email-as-a-Service Gateway</p>
+          <h1>Email Service Gateway</h1>
+          <p class="subtitle">Dịch vụ gửi email Gmail SMTP • Nhóm SOA.26-38</p>
         </div>
       </div>
 
@@ -36,26 +44,25 @@
 
     <!-- Main Navigation Tabs -->
     <nav class="nav-tabs">
-      <button class="tab-btn active" data-tab="inboxTab"> Virtual Inbox (<span id="mailCount">0</span>)</button>
-      <button class="tab-btn" data-tab="testTab"> Test Gửi Email</button>
+      <button class="tab-btn active" data-tab="inboxTab"> Hộp Thư Ảo (<span id="mailCount">0</span>)</button>
+      <button class="tab-btn" data-tab="testTab"> Kiểm Thử Gửi Mail</button>
       <button class="tab-btn" data-tab="configTab"> Cấu Hình Gmail</button>
-      <button class="tab-btn" data-tab="codeTab"> Mã Nhúng 1 Dòng (DX)</button>
+      <button class="tab-btn" data-tab="codeTab"> Tích Hợp API</button>
     </nav>
 
     <!-- TAB 1: Virtual Inbox -->
     <section id="inboxTab" class="tab-content active">
       <div class="section-header">
         <div>
-          <h2>Hộp Thư Ảo Thời Gian Thực (Sandbox Inspector)</h2>
-          <p class="desc">Email gửi đến trong chế độ Sandbox sẽ hiển thị ngay tại đây mà không cần tài khoản hay mật
-            khẩu.</p>
+          <h2>Hộp Thư Ảo (Sandbox Inspector)</h2>
+          <p class="desc">Email gửi đến trong chế độ Sandbox sẽ hiển thị ngay tại đây theo thời gian thực.</p>
         </div>
         <button id="btnClearMails" class="btn btn-outline-danger">Dọn Sạch Hộp Thư</button>
       </div>
 
       <div class="inbox-layout">
         <div class="mail-list" id="mailList">
-          <div class="empty-state">Chưa có email nào. Hãy thử tab "Test Gửi Email"!</div>
+          <div class="empty-state">Chưa có email nào. Hãy thử tab "Kiểm Thử Gửi Mail"!</div>
         </div>
         <div class="mail-viewer" id="mailViewer">
           <div class="empty-preview">Chọn một email bên trái để xem nội dung chi tiết</div>
@@ -66,15 +73,14 @@
     <!-- TAB 2: Test Send -->
     <section id="testTab" class="tab-content">
       <div class="card card-form">
-        <h2>Kiểm Thử 3 Chức Năng Cốt Lõi (Seminar Demo)</h2>
-        <p class="desc">Chọn nhanh kịch bản kiểm thử theo đúng yêu cầu đề bài:</p>
+        <h2>Kiểm Thử 3 Nghiệp Vụ Cốt Lõi</h2>
+        <p class="desc">Chọn nhanh kịch bản kiểm thử theo đúng yêu cầu đề tài:</p>
 
         <!-- Preset Buttons -->
         <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-          <button type="button" class="btn btn-preset active" id="btnPresetVerify">1️⃣ Account Verification
-            (OTP)</button>
-          <button type="button" class="btn btn-preset" id="btnPresetReset">2️⃣ Password Reset (Link)</button>
-          <button type="button" class="btn btn-preset" id="btnPresetCustom">3️⃣ Custom HTML Email</button>
+          <button type="button" class="btn btn-preset active" id="btnPresetVerify">1. Account Verification (OTP)</button>
+          <button type="button" class="btn btn-preset" id="btnPresetReset">2. Password Reset (Link 5 Phút)</button>
+          <button type="button" class="btn btn-preset" id="btnPresetCustom">3. Custom HTML Email</button>
         </div>
 
         <form id="testSendForm">
@@ -95,8 +101,13 @@
             <input type="text" id="testSubject" placeholder="Tiêu đề email..." value="" />
           </div>
 
+          <div class="form-group" id="groupOtp">
+            <label>Mã OTP (Tùy chọn - nếu để trống Gateway sẽ tự sinh 6 số):</label>
+            <input type="text" id="testOtp" maxlength="6" placeholder="vd: 889922 (hoặc để trống)" value="" />
+          </div>
+
           <div class="form-group" id="groupVerifyUrl" style="display: none;">
-            <label>Link xác thực (Tùy chọn - nếu bỏ trống sẽ tự sinh mã OTP 6 số):</label>
+            <label>Link xác thực (Tùy chọn - thay cho mã OTP):</label>
             <input type="url" id="testVerifyUrl" placeholder="https://myapp.com/verify?token=xyz" value="" />
           </div>
 
@@ -147,11 +158,11 @@
     <!-- TAB 4: Code Integration -->
     <section id="codeTab" class="tab-content">
       <div class="card">
-        <h2>Tích Hợp Dịch Vụ Vào Dự Án Khác (Developer Experience)</h2>
-        <p class="desc">Bất kỳ dự án Web/Backend nào của sinh viên chỉ cần gọi 1 trong 3 endpoint chuẩn REST sau:</p>
+        <h2>Tích Hợp Dịch Vụ Vào Ứng Dụng Khác</h2>
+        <p class="desc">Các hệ thống ứng dụng trong kiến trúc SOA gọi Email Gateway thông qua các endpoint REST API chuẩn:</p>
 
         <h3>1. Xác thực tài khoản (Account Verification)</h3>
-        <pre><code>// Gọi API xác thực tài khoản (ở Live mode cần truyền otp hoặc verifyUrl; ở Sandbox có thể bỏ trống để tự sinh)
+        <pre><code>// Gọi API xác thực tài khoản (Live mode cần truyền otp hoặc verifyUrl; Sandbox có thể bỏ trống để tự sinh)
 await fetch("http://localhost:3000/api/v1/verify-email", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -179,7 +190,7 @@ await fetch("http://localhost:3000/api/v1/password-reset", {
   -H "Content-Type: application/json" \
   -d '{"to": "dev@tdtu.edu.vn", "template": "custom-html", "variables": {"title": "Chào mừng!", "content": "<p>Nội dung HTML</p>"}}'</code></pre>
 
-        <h3 style="margin-top: 30px; opacity: 0.7;"> Phần mở rộng: Nhúng Web Component 1 dòng (HTML)</h3>
+        <h3 style="margin-top: 30px; opacity: 0.7;">Tính năng mở rộng: Nhúng Web Component (HTML)</h3>
         <pre><code>&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
 &lt;mail-widget target="admin@cuahang.com" title="Liên Hệ"&gt;&lt;/mail-widget&gt;</code></pre>
       </div>

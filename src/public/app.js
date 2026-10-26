@@ -116,6 +116,7 @@ const btnPresetCustom = document.getElementById('btnPresetCustom');
 
 const selectedEndpointInput = document.getElementById('selectedEndpoint');
 const groupName = document.getElementById('groupName');
+const groupOtp = document.getElementById('groupOtp');
 const groupSubject = document.getElementById('groupSubject');
 const groupVerifyUrl = document.getElementById('groupVerifyUrl');
 const groupResetUrl = document.getElementById('groupResetUrl');
@@ -130,6 +131,7 @@ btnPresetVerify.addEventListener('click', () => {
   setPresetActive(btnPresetVerify);
   selectedEndpointInput.value = '/api/v1/verify-email';
   groupName.style.display = 'block';
+  if (groupOtp) groupOtp.style.display = 'block';
   groupSubject.style.display = 'none';
   groupVerifyUrl.style.display = 'block';
   groupResetUrl.style.display = 'none';
@@ -140,6 +142,7 @@ btnPresetReset.addEventListener('click', () => {
   setPresetActive(btnPresetReset);
   selectedEndpointInput.value = '/api/v1/password-reset';
   groupName.style.display = 'block';
+  if (groupOtp) groupOtp.style.display = 'none';
   groupSubject.style.display = 'none';
   groupVerifyUrl.style.display = 'none';
   groupResetUrl.style.display = 'block';
@@ -150,6 +153,7 @@ btnPresetCustom.addEventListener('click', () => {
   setPresetActive(btnPresetCustom);
   selectedEndpointInput.value = '/api/v1/send';
   groupName.style.display = 'none';
+  if (groupOtp) groupOtp.style.display = 'none';
   groupSubject.style.display = 'block';
   groupVerifyUrl.style.display = 'none';
   groupResetUrl.style.display = 'none';
@@ -181,6 +185,9 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
 
   if (endpoint === '/api/v1/verify-email') {
     payload.name = name;
+    const otpInput = document.getElementById('testOtp');
+    const otpVal = otpInput ? otpInput.value.trim() : '';
+    if (otpVal) payload.otp = otpVal;
     if (verifyUrl) payload.verifyUrl = verifyUrl;
   } else if (endpoint === '/api/v1/password-reset') {
     payload.name = name;

@@ -24,7 +24,10 @@ function getTransporter() {
       maxMessages: 100,    // Tối đa 100 email trên 1 connection
       rateDelta: 1000,     // 1 giây
       rateLimit: 14,       // Tối đa 14 email / giây
-      auth: { user, pass }
+      auth: {
+        user: user.trim(),
+        pass: pass.replace(/\s+/g, '')
+      }
     });
 
     // Bắt lỗi rò rỉ socket của connection pool

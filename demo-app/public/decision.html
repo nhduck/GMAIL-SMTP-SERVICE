@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xét Duyệt Đơn Xin Nghỉ Phép - TMT Company</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body style="background-color: #f8fafc; padding-top: 40px;">
+  <div class="container" style="max-width: 580px; margin: 0 auto;">
+    <div class="card" style="box-shadow: var(--shadow-md); border-radius: 10px; padding: 32px 28px;">
+      <!-- Tiêu đề trang -->
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div
+          style="display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; margin-bottom: 12px; border: 1px solid #dbeafe;">
+          TMT COMPANY • CỔNG PHÊ DUYỆT
+        </div>
+        <h1 style="font-size: 20px; font-weight: 700; color: var(--text-main);">Xét Duyệt Đơn Xin Nghỉ Phép</h1>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+          Xác nhận quyết định xử lý đơn nghỉ phép của nhân viên.
+        </p>
+      </div>
+
+      <!-- Khu vực hiển thị trạng thái tải / lỗi -->
+      <div id="loadingBox" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 14px;">
+        Đang tải thông tin đơn nghỉ phép...
+      </div>
+
+      <div id="errorBox" class="alert alert-error" style="display: none;"></div>
+
+      <!-- Nội dung chi tiết đơn nghỉ phép -->
+      <div id="contentBox" style="display: none;">
+        <div
+          style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 24px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-muted); width: 35%; font-size: 13px; border-bottom: none;">Nhân viên:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: var(--text-main); border-bottom: none;" id="empName">--</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Email:</td>
+              <td style="padding: 6px 0; color: var(--primary); font-weight: 500; border-bottom: none;" id="empEmail">--</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Thời gian nghỉ:</td>
+              <td style="padding: 6px 0; font-weight: 600; border-bottom: none;" id="leaveRange">--</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Lý do xin nghỉ:</td>
+              <td style="padding: 6px 0; color: #334155; border-bottom: none;" id="leaveReason">--</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Khối hành động -->
+        <div id="actionForm">
+          <p style="text-align: center; font-size: 14px; color: var(--text-main); margin-bottom: 20px;">
+            Bạn đang chọn thao tác: <b id="actionLabel" style="font-size: 15px;">--</b>
+          </p>
+
+          <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+            <button id="btnConfirm" class="btn btn-success" style="padding: 10px 24px;" onclick="submitDecision()">
+              Xác Nhận Thực Hiện
+            </button>
+            <button id="btnSwitchAction" class="btn-link" onclick="toggleAction()">
+              Đổi sang quyết định khác
+            </button>
+          </div>
+        </div>
+
+        <!-- Khối kết quả sau khi duyệt xong -->
+        <div id="successBox" style="display: none; text-align: center; padding: 20px 0;">
+          <div style="font-size: 40px; color: var(--success); margin-bottom: 8px;">✓</div>
+          <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;" id="successTitle">Đã Xử Lý Thành Công</h2>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;" id="successMsg">
+            Email kết quả đã được gửi tự động đến hòm thư của nhân viên.
+          </p>
+          <a href="http://127.0.0.1:3000" target="_blank" class="btn btn-primary">
+            Kiểm tra hộp thư Sandbox (Cổng 3000) ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Lấy token từ pathname (/decision/:token)
+    const pathParts = window.location.pathname.split('/');
+    const token = pathParts[pathParts.length - 1];
+
+    // Lấy action từ query (?action=approve | reject)
+    const urlParams = new URLSearchParams(window.location.search);
+    let selectedAction = (urlParams.get('action') || 'approve').toLowerCase();
+
+    window.addEventListener('load', loadDecisionInfo);
+
+    async function loadDecisionInfo() {
+      const loading = document.getElementById('loadingBox');
+      const errorBox = document.getElementById('errorBox');
+      const content = document.getElementById('contentBox');
+
+      try {
+        const res = await fetch(`/api/decision-info/${token}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          loading.style.display = 'none';
+          errorBox.innerText = data.error || 'Liên kết không hợp lệ hoặc đã được sử dụng.';
+          errorBox.style.display = 'block';
+          return;
+        }
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        const leave = data.leave;
+        document.getElementById('empName').innerText = leave.employeeName;
+        document.getElementById('empEmail').innerText = leave.employeeEmail;
+        document.getElementById('leaveRange').innerText = `${leave.startDate} đến ${leave.endDate} (${leave.days} ngày)`;
+        document.getElementById('leaveReason').innerText = leave.reason;
+
+        updateActionUI();
+      } catch (err) {
+        loading.style.display = 'none';
+        errorBox.innerText = `Lỗi kết nối tới máy chủ: ${err.message}`;
+        errorBox.style.display = 'block';
+      }
+    }
+
+    function updateActionUI() {
+      const isApprove = selectedAction === 'approve';
+      const label = document.getElementById('actionLabel');
+      const btn = document.getElementById('btnConfirm');
+      const switchBtn = document.getElementById('btnSwitchAction');
+
+      if (isApprove) {
+        label.innerHTML = '<span style="color: var(--success); text-transform: uppercase;">DUYỆT ĐƠN NGHỈ PHÉP</span>';
+        btn.className = 'btn btn-success';
+        btn.innerHTML = '✓ Xác Nhận DUYỆT ĐƠN';
+        switchBtn.innerText = 'Đổi ý: Từ chối đơn này';
+      } else {
+        label.innerHTML = '<span style="color: var(--danger); text-transform: uppercase;">TỪ CHỐI ĐƠN NGHỈ PHÉP</span>';
+        btn.className = 'btn btn-danger';
+        btn.innerHTML = '✕ Xác Nhận TỪ CHỐI';
+        switchBtn.innerText = 'Đổi ý: Duyệt đơn này';
+      }
+    }
+
+    function toggleAction() {
+      selectedAction = selectedAction === 'approve' ? 'reject' : 'approve';
+      updateActionUI();
+    }
+
+    async function submitDecision() {
+      const btn = document.getElementById('btnConfirm');
+      btn.disabled = true;
+      btn.innerText = 'Đang xử lý & gửi email...';
+
+      try {
+        const res = await fetch('/api/decision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, action: selectedAction })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          document.getElementById('actionForm').style.display = 'none';
+          document.getElementById('successBox').style.display = 'block';
+          document.getElementById('successTitle').innerText = selectedAction === 'approve'
+            ? 'Đã Phê Duyệt Đơn Nghỉ Phép'
+            : 'Đã Từ Chối Đơn Nghỉ Phép';
+          document.getElementById('successMsg').innerText = data.message;
+        } else {
+          alert('Lỗi: ' + (data.error || 'Không thể thực hiện quyết định'));
+          btn.disabled = false;
+          updateActionUI();
+        }
+      } catch (err) {
+        alert('Lỗi kết nối: ' + err.message);
+        btn.disabled = false;
+        updateActionUI();
+      }
+    }
+  </script>
+</body>
+
+</html>
