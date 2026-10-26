@@ -376,9 +376,10 @@ app.post('/api/reset', (req, res) => {
 
 // Khởi chạy Server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
+    const activeMgr = await resolveManagerEmail();
     console.log(`🏢 Máy chủ đang chạy tại: ${DEMO_APP_URL}`);
-    console.log(`👤 [Quản lý mặc định]: ${MANAGER_EMAIL}`);
+    console.log(`👤 [Quản lý mặc định]: ${activeMgr}`);
     console.log(`🔗 [Kết nối Gateway]:  ${process.env.SERVICE_URL || 'http://localhost:3000'}`);
   });
 }
