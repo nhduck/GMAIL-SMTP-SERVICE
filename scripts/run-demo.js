@@ -60,7 +60,7 @@ setTimeout(() => {
   console.log(' 1. Giao diện Nhân viên (Tạo đơn, nhận OTP):');
   console.log('      http://localhost:4000');
   console.log(' 2. Hộp thư ảo Sandbox (Xem email OTP, email Duyệt đơn):');
-  console.log('      http://localhost:3000');
+  console.log('      http://127.0.0.1:3000 (hoặc http://localhost:3000)');
   console.log(' 3. Tài khoản Quản lý nhận email mẫu:');
   console.log(`      ${process.env.MANAGER_EMAIL || 'manager@demo.local'}`);
 }, 1200);

@@ -58,7 +58,7 @@ module.exports = {
       variables: {
         title: subject,
         greeting: 'Chào Quản lý,',
-        intro: `Nhân viên <strong>${leave.employeeName}</strong> (${leave.employeeEmail}) vừa gửi một đơn xin nghỉ phép mới trên hệ thống:`,
+        intro: `Nhân viên ${leave.employeeName} (${leave.employeeEmail}) vừa gửi một đơn xin nghỉ phép mới trên hệ thống:`,
         badge: { text: 'CHỜ PHÊ DUYỆT', tone: 'warning' },
         details: [
           { label: 'Nhân viên yêu cầu', value: `${leave.employeeName} (${leave.employeeEmail})` },
