@@ -4,27 +4,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Xác Nhận Phê Duyệt Đơn Nghỉ Phép - Quản Lý TMT Company</title>
+  <title>Xét Duyệt Đơn Xin Nghỉ Phép - TMT Company</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 
-<body style="background-color: #f1f5f9;">
-  <div class="container" style="max-width: 620px; margin: 40px auto;">
-    <div class="card" style="box-shadow: var(--shadow-lg); border-radius: 16px;">
+<body style="background-color: #f8fafc; padding-top: 40px;">
+  <div class="container" style="max-width: 580px; margin: 0 auto;">
+    <div class="card" style="box-shadow: var(--shadow-md); border-radius: 10px; padding: 32px 28px;">
       <!-- Tiêu đề trang -->
       <div style="text-align: center; margin-bottom: 24px;">
         <div
-          style="display: inline-block; background: #e0f2fe; color: #0284c7; padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 700; margin-bottom: 12px;">
-          CỔNG XÁC NHẬN PHÊ DUYỆT (MANAGER PORTAL)
+          style="display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; margin-bottom: 12px; border: 1px solid #dbeafe;">
+          TMT COMPANY • CỔNG PHÊ DUYỆT
         </div>
-        <h1 style="font-size: 22px; color: var(--text-main);">Xét Duyệt Đơn Xin Nghỉ Phép</h1>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
-          Bảo mật 2 bước: Liên kết chỉ mở trang xem trước, bấm xác nhận mới chính thức gửi kết quả.
+        <h1 style="font-size: 20px; font-weight: 700; color: var(--text-main);">Xét Duyệt Đơn Xin Nghỉ Phép</h1>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+          Xác nhận quyết định xử lý đơn nghỉ phép của nhân viên.
         </p>
       </div>
 
       <!-- Khu vực hiển thị trạng thái tải / lỗi -->
-      <div id="loadingBox" style="text-align: center; padding: 30px; color: var(--text-muted);">
+      <div id="loadingBox" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 14px;">
         Đang tải thông tin đơn nghỉ phép...
       </div>
 
@@ -33,23 +37,23 @@
       <!-- Nội dung chi tiết đơn nghỉ phép -->
       <div id="contentBox" style="display: none;">
         <div
-          style="background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 24px;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
-              <td style="padding: 8px 0; color: var(--text-muted); width: 35%; font-size: 13px;">Nhân viên:</td>
-              <td style="padding: 8px 0; font-weight: 600; color: var(--text-main);" id="empName">--</td>
+              <td style="padding: 6px 0; color: var(--text-muted); width: 35%; font-size: 13px; border-bottom: none;">Nhân viên:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: var(--text-main); border-bottom: none;" id="empName">--</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0; color: var(--text-muted); font-size: 13px;">Email:</td>
-              <td style="padding: 8px 0; color: var(--primary);" id="empEmail">--</td>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Email:</td>
+              <td style="padding: 6px 0; color: var(--primary); font-weight: 500; border-bottom: none;" id="empEmail">--</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0; color: var(--text-muted); font-size: 13px;">Thời gian nghỉ:</td>
-              <td style="padding: 8px 0; font-weight: 600;" id="leaveRange">--</td>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Thời gian nghỉ:</td>
+              <td style="padding: 6px 0; font-weight: 600; border-bottom: none;" id="leaveRange">--</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0; color: var(--text-muted); font-size: 13px;">Lý do xin nghỉ:</td>
-              <td style="padding: 8px 0; color: #334155;" id="leaveReason">--</td>
+              <td style="padding: 6px 0; color: var(--text-muted); font-size: 13px; border-bottom: none;">Lý do xin nghỉ:</td>
+              <td style="padding: 6px 0; color: #334155; border-bottom: none;" id="leaveReason">--</td>
             </tr>
           </table>
         </div>
@@ -57,15 +61,14 @@
         <!-- Khối hành động -->
         <div id="actionForm">
           <p style="text-align: center; font-size: 14px; color: var(--text-main); margin-bottom: 20px;">
-            Bạn đang chuẩn bị thực hiện quyết định: <b id="actionLabel" style="font-size: 16px;">--</b>
+            Bạn đang chọn thao tác: <b id="actionLabel" style="font-size: 15px;">--</b>
           </p>
 
-          <div style="display: flex; gap: 12px; justify-content: center;">
-            <button id="btnConfirm" class="btn btn-success" style="padding: 14px 28px; font-size: 15px;"
-              onclick="submitDecision()">
-              ✓ Xác Nhận Thực Hiện
+          <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+            <button id="btnConfirm" class="btn btn-success" style="padding: 10px 24px;" onclick="submitDecision()">
+              Xác Nhận Thực Hiện
             </button>
-            <button id="btnSwitchAction" class="btn btn-link" onclick="toggleAction()">
+            <button id="btnSwitchAction" class="btn-link" onclick="toggleAction()">
               Đổi sang quyết định khác
             </button>
           </div>
@@ -73,14 +76,13 @@
 
         <!-- Khối kết quả sau khi duyệt xong -->
         <div id="successBox" style="display: none; text-align: center; padding: 20px 0;">
-          <div style="font-size: 54px; color: var(--success); margin-bottom: 12px;">✓</div>
-          <h2 style="font-size: 20px; color: var(--text-main); margin-bottom: 8px;" id="successTitle">Đã Xử Lý Thành
-            Công</h2>
-          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;" id="successMsg">
-            Email kết quả đã được gửi tức thì về hòm thư của nhân viên qua Email Gateway.
+          <div style="font-size: 40px; color: var(--success); margin-bottom: 8px;">✓</div>
+          <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;" id="successTitle">Đã Xử Lý Thành Công</h2>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;" id="successMsg">
+            Email kết quả đã được gửi tự động đến hòm thư của nhân viên.
           </p>
           <a href="http://127.0.0.1:3000" target="_blank" class="btn btn-primary">
-            Kiểm tra email kết quả tại Hộp thư ảo Sandbox (Cổng 3000) ↗
+            Kiểm tra hộp thư Sandbox (Cổng 3000) ↗
           </a>
         </div>
       </div>

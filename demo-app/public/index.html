@@ -4,7 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cổng Dịch Vụ Nghỉ Phép TMT Company</title>
+  <title>Cổng Thông Tin Nghỉ Phép - TMT Company</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,19 +16,16 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <div>
-        <div class="brand-title">
-          🏢 HR Leave Portal
-          <span class="badge-tag">SOA Client (Port 4000)</span>
+      <div class="brand-group">
+        <div class="brand-logo-badge">TMT</div>
+        <div>
+          <div class="brand-title">Cổng Thông Tin Nhân Sự</div>
+          <div class="brand-subtitle">TMT Company • Hệ thống quản lý nghỉ phép</div>
         </div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
-          Ứng dụng mẫu minh họa tích hợp dịch vụ Email Gateway (Cổng 3000) qua chuẩn REST API
-        </p>
       </div>
       <div id="userHeader" class="user-bar">
-        <a href="http://127.0.0.1:3000" target="_blank"
-          style="font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 600;">
-          📥 Hộp thư ảo Sandbox (Cổng 3000) ↗
+        <a href="http://127.0.0.1:3000" target="_blank" class="gateway-link">
+          <span class="pulse-dot"></span> Hộp thư Sandbox (Cổng 3000) ↗
         </a>
       </div>
     </header>
@@ -34,27 +35,25 @@
 
     <!-- MÀN HÌNH CHƯA ĐĂNG NHẬP -->
     <div id="authView">
-      <div class="card" style="max-width: 480px; margin: 40px auto;">
+      <div class="card" style="max-width: 460px; margin: 30px auto;">
         <div class="auth-tabs">
           <button class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Đăng Nhập</button>
           <button class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Đăng Ký Tài Khoản</button>
-          <button class="auth-tab" id="tabForgotBtn" onclick="switchAuthTab('forgot')" style="display: none;">Quên Mật
-            Khẩu</button>
+          <button class="auth-tab" id="tabForgotBtn" onclick="switchAuthTab('forgot')" style="display: none;">Quên Mật Khẩu</button>
         </div>
 
         <!-- Form Đăng Nhập -->
         <form id="loginForm" onsubmit="handleLogin(event)">
           <div class="form-group">
             <label>Địa chỉ Email</label>
-            <input type="email" id="loginEmail" placeholder="vd: nguyen_van_a@tdtu.edu.vn" required>
+            <input type="email" id="loginEmail" placeholder="nhanvien@tdtu.edu.vn" required>
           </div>
           <div class="form-group">
             <label>Mật khẩu</label>
             <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" required>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <a href="javascript:void(0)" onclick="switchAuthTab('forgot')"
-              style="font-size: 13px; color: var(--primary); text-decoration: none;">
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+            <a href="javascript:void(0)" onclick="switchAuthTab('forgot')" class="btn-link">
               Quên mật khẩu?
             </a>
           </div>
@@ -65,42 +64,43 @@
         <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
           <div class="form-group">
             <label>Họ và tên nhân viên</label>
-            <input type="text" id="regName" placeholder="vd: Nguyễn Văn A" required>
+            <input type="text" id="regName" placeholder="Nguyễn Văn A" required>
           </div>
           <div class="form-group">
             <label>Địa chỉ Email</label>
-            <input type="email" id="regEmail" placeholder="vd: nhanvien@tdtu.edu.vn" required>
+            <input type="email" id="regEmail" placeholder="nhanvien@tdtu.edu.vn" required>
           </div>
           <div class="form-group">
             <label>Mật khẩu (tối thiểu 6 ký tự)</label>
             <input type="password" id="regPassword" minlength="6" placeholder="Tạo mật khẩu" required>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">
-            Đăng Ký & Nhận Mã OTP
+            Đăng Ký Tài Khoản
           </button>
           <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 12px;">
-            Dịch vụ sẽ gửi mã OTP 6 số qua Email Gateway (chuẩn Account Verification).
+            Mã OTP 6 số sẽ được gửi về email của bạn để kích hoạt tài khoản.
           </p>
         </form>
 
         <!-- Form Xác Thực OTP -->
         <div id="otpSection" style="display: none;">
           <div class="alert alert-info">
-            📧 Mã OTP đã được gửi đến <b id="otpTargetEmail"></b>. Vui lòng kiểm tra hòm thư!
+            Mã OTP xác thực đã được gửi đến <b id="otpTargetEmail"></b>. Vui lòng kiểm tra hộp thư!
           </div>
           <div id="sandboxOtpAlert" style="display: none;" class="alert alert-success"></div>
           <form onsubmit="handleVerifyOtp(event)">
             <div class="form-group">
-              <label>Nhập mã xác thực OTP (6 chữ số):</label>
+              <label style="text-align: center;">Nhập mã xác thực OTP (6 chữ số):</label>
               <input type="text" id="otpInput" maxlength="6" class="otp-box" placeholder="------" required autofocus>
             </div>
             <button type="submit" class="btn btn-success" style="width: 100%;">
               Xác Nhận Kích Hoạt Tài Khoản
             </button>
-            <button type="button" class="btn btn-link" style="width: 100%; margin-top: 10px;"
-              onclick="switchAuthTab('register')">
-              ← Quay lại đăng ký email khác
-            </button>
+            <div style="text-align: center; margin-top: 12px;">
+              <button type="button" class="btn-link" onclick="switchAuthTab('register')">
+                ← Quay lại đăng ký email khác
+              </button>
+            </div>
           </form>
         </div>
 
@@ -108,21 +108,22 @@
         <form id="forgotForm" style="display: none;" onsubmit="handleForgot(event)">
           <div class="form-group">
             <label>Nhập Email tài khoản cần đặt lại mật khẩu:</label>
-            <input type="email" id="forgotEmail" placeholder="vd: nhanvien@tdtu.edu.vn" required>
+            <input type="email" id="forgotEmail" placeholder="nhanvien@tdtu.edu.vn" required>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">
             Gửi Liên Kết Đặt Lại Mật Khẩu (5 Phút)
           </button>
-          <button type="button" class="btn btn-link" style="width: 100%; margin-top: 10px;"
-            onclick="switchAuthTab('login')">
-            ← Quay lại đăng nhập
-          </button>
+          <div style="text-align: center; margin-top: 12px;">
+            <button type="button" class="btn-link" onclick="switchAuthTab('login')">
+              ← Quay lại đăng nhập
+            </button>
+          </div>
         </form>
 
         <!-- Form Nhập Mật Khẩu Mới (Khi nhấn link từ email) -->
         <form id="resetPasswordForm" style="display: none;" onsubmit="handleResetPassword(event)">
           <div class="alert alert-info">
-            🔑 Đang đặt lại mật khẩu với liên kết an toàn (TTL 5 phút).
+            Vui lòng nhập mật khẩu mới cho tài khoản (liên kết có hiệu lực 5 phút).
           </div>
           <div class="form-group">
             <label>Mật khẩu mới (tối thiểu 6 ký tự):</label>
@@ -138,20 +139,22 @@
     <!-- MÀN HÌNH ĐÃ ĐĂNG NHẬP (cho employee) -->
     <div id="employeePortal" style="display: none;">
       <!-- Thanh thông tin nhân viên -->
-      <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
-        <div>
-          <span style="font-size: 13px; color: var(--text-muted);">Đang đăng nhập với vai trò:</span>
-          <div style="font-size: 16px; font-weight: 700; color: var(--text-main);" id="currentUserName">--</div>
-          <div style="font-size: 13px; color: var(--primary);" id="currentUserEmail">--</div>
+      <div class="user-profile-card">
+        <div class="user-profile-left">
+          <div class="user-avatar-circle" id="avatarInitial">U</div>
+          <div>
+            <div class="user-profile-name" id="currentUserName">--</div>
+            <div class="user-profile-email" id="currentUserEmail">--</div>
+          </div>
         </div>
-        <button class="btn btn-danger" onclick="handleLogout()" style="padding: 6px 14px; font-size: 13px;">
+        <button class="btn btn-outline" onclick="handleLogout()">
           Đăng Xuất
         </button>
       </div>
 
       <!-- Khối Tạo Đơn Nghỉ Phép Mới -->
       <div class="card">
-        <h2 class="card-title">📝 Tạo Đơn Xin Nghỉ Phép Mới</h2>
+        <h2 class="card-title">Tạo Đơn Xin Nghỉ Phép</h2>
         <form id="createLeaveForm" onsubmit="handleCreateLeave(event)">
           <div style="display: grid; grid-template-columns: 1fr 1fr 120px; gap: 16px;">
             <div class="form-group">
@@ -173,7 +176,7 @@
               placeholder="Ghi rõ lý do (ví dụ: Nghỉ khám sức khỏe định kỳ, việc gia đình...)" required></textarea>
           </div>
           <button type="submit" id="btnSubmitLeave" class="btn btn-primary">
-            📤 Gửi Đơn Xin Nghỉ
+            Gửi Đơn Xin Nghỉ
           </button>
         </form>
       </div>
@@ -181,9 +184,9 @@
       <!-- Danh Sách Đơn Nghỉ Phép Của Tôi -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h2 class="card-title" style="margin-bottom: 0;">📋 Lịch Sử Đơn Nghỉ Phép Của Bạn</h2>
-          <button class="btn btn-link" onclick="loadMyLeaves()" style="text-decoration: none; font-weight: 600;">
-            🔄 Làm mới danh sách
+          <h2 class="card-title" style="margin-bottom: 0;">Lịch Sử Đơn Xin Nghỉ</h2>
+          <button class="btn btn-link" onclick="loadMyLeaves()" style="font-weight: 600;">
+            Làm mới danh sách
           </button>
         </div>
         <div class="table-responsive">
@@ -343,6 +346,10 @@
       document.getElementById('employeePortal').style.display = 'block';
       document.getElementById('currentUserName').innerText = user.name;
       document.getElementById('currentUserEmail').innerText = user.email;
+      if (document.getElementById('avatarInitial')) {
+        const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
+        document.getElementById('avatarInitial').innerText = initial;
+      }
       loadMyLeaves();
     }
 

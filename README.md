@@ -1,14 +1,14 @@
 # Gmail-SMTP-Service: Email Service Integration (Gmail SMTP)
 
-> **Chủ đề Seminar:** **Email Service Integration (Gmail SMTP)**  
+> **Chủ đề Seminar:** **Email Service Integration (Gmail SMTP)** 
 > **Trọng tâm đề bài:**
 > 1. **Account Verification** (Xác thực tài khoản qua OTP hoặc Link kích hoạt)
 > 2. **Password Reset** (Đặt lại mật khẩu qua liên kết có thời hạn an toàn 5 phút)
-> 3. **HTML Email** (Mẫu email đồ họa Responsive, truyền biến động `{{name}}`, `{{otp}}`)
+> 3. **HTML Email** (Mẫu email đồ họa Responsive)
 
 ---
 
-## PHÂN CHIA CÔNG VIỆC NHÓM
+## BẢNG PHÂN CÔNG CÔNG VIỆC CỦA NHÓM SOA.26-38
 
 | Thành viên | Trách nhiệm chính | Module phụ trách |
 | :--- | :--- | :--- |
@@ -16,16 +16,16 @@
 | **524H0010 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK | `Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
 | **524H0008 - Lâm Tấn Đạt** | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
 
-## CÁCH CÀI ĐẶT & CHẠY THỬ
+## CÁCH CÀI ĐẶT & CHẠY THỬ & TEST THỬ
 
-### Cách 1: Chạy Demo Toàn Luồng Nghiệp Vụ (Khuyên Dùng Để Đánh Giá)
+### Cách 1: Chạy Demo Toàn Luồng Nghiệp Vụ (Trang xin nghỉ phép của TMT Company)
 Chỉ cần chạy 1 lệnh duy nhất hoặc click đúp file **`demo.bat`** trên Windows:
 ```bash
 npm run demo
 ```
 Lệnh sẽ khởi chạy đồng thời cả hai dịch vụ độc lập:
 * **🏢 Portal Nhân viên (Cổng 4000):** [http://localhost:4000](http://localhost:4000) — Đăng ký tài khoản nhận OTP, đăng nhập, nộp đơn xin nghỉ phép, quên mật khẩu (TTL 5 phút).
-* **📬 Hộp thư ảo Sandbox (Cổng 3000):** [http://localhost:3000](http://localhost:3000) — Xem email OTP, email Quản lý duyệt đơn và email kết quả trả về tức thì.
+* **📬 Hộp thư ảo Sandbox (Cổng 3000):** [http://localhost:3000](http://localhost:3000) — Xem email OTP, email Quản lý duyệt đơn và email kết quả trả về.
 
 ### Cách 2: Chạy Riêng Dịch Vụ Email Gateway (Cổng 3000)
 Click đúp chuột vào file **`start.bat`** hoặc gõ lệnh:
@@ -34,9 +34,9 @@ npm start
 ```
 * **Dashboard Quản Trị & Hộp thư ảo:** [http://localhost:3000](http://localhost:3000)
 
-### Cách 3: Chạy Kiểm Thử Tự Động (Test Suite)
+### Cách 3: Chạy Kiểm Thử Tự Động
 ```bash
-npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép (E2E trong 2 giây)
+npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép
 npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker
 ```
 
@@ -141,7 +141,7 @@ await fetch("http://localhost:3000/api/v1/send", {
 
 ```text
 Auth-Email-Service/
-├── demo-app/                            # Ứng dụng xin nghỉ phép nghiệp vụ (SOA Client - Cổng 4000)
+├── demo-app/                            # Ứng dụng xin nghỉ phép nghiệp vụ (TMT Company - Cổng 4000)
 │   ├── public/                          # Giao diện web portal
 │   │   ├── index.html                   # Portal nhân viên (Đăng ký OTP, Tạo đơn, Quên mật khẩu)
 │   │   ├── decision.html                # Cổng xác nhận phê duyệt an toàn của Quản lý
@@ -149,8 +149,8 @@ Auth-Email-Service/
 │   ├── mailer.js                        # Client gọi Email Service Gateway qua chuẩn REST API
 │   ├── server.js                        # Máy chủ nghiệp vụ Express (Cổng 4000)
 │   └── store.js                         # In-memory store (Người dùng, OTP, Đơn nghỉ, Token 1 lần)
-├── demo/                                # (Bản cũ) Form HTML Demo Auth trực tiếp từ trình duyệt
-│   └── index.html                       # Demo Auth Client cũ
+├── demo/                                # Form HTML Demo Auth trực tiếp từ trình duyệt (bản 6 fetch)
+│   └── index.html                       # Demo Auth Client (bản 6 fetch)
 ├── scripts/                             # Kịch bản điều khiển hệ thống
 │   └── run-demo.js                      # Chạy đồng thời Email Gateway & Demo App với log có tiền tố
 ├── src/                                 # Toàn bộ mã nguồn dịch vụ Email Gateway (Cổng 3000)
