@@ -1,4 +1,4 @@
-# Auth-Email-Service: Email Service Integration (Gmail SMTP)
+# Gmail-SMTP-Service: Email Service Integration (Gmail SMTP)
 
 > **Chủ đề Seminar:** **Email Service Integration (Gmail SMTP)**  
 > **Trọng tâm đề bài:**
