@@ -18,23 +18,25 @@
 
 ## CÁCH CÀI ĐẶT & CHẠY THỬ & TEST THỬ
 
-### Cách 1: Chạy Demo Toàn Luồng Nghiệp Vụ (Trang xin nghỉ phép của TMT Company)
-Chỉ cần chạy 1 lệnh duy nhất hoặc click đúp file **`demo.bat`** trên Windows:
-```bash
-npm run demo
-```
-Lệnh sẽ khởi chạy đồng thời cả hai dịch vụ độc lập:
+### 1: Chạy Demo Toàn Luồng Nghiệp Vụ (Trang xin nghỉ phép của TMT Company)
+Khởi chạy đồng thời cả hai dịch vụ độc lập (**Cổng 3000** Email Gateway & **Cổng 4000** Portal Nhân viên):
+* **Trên Windows:** Click đúp chuột vào file **`demo.bat`** (hoặc gõ `npm run demo`).
+* **Trên macOS / Ubuntu Linux:** Mở Terminal gõ **`bash demo.sh`** (hoặc `npm run demo`).
+* **Qua Docker Compose (Tùy chọn nếu mấy bro không muốn cài Node.js):**
+  ```bash
+  docker compose up -d
+  ```
+
+Sau khi khởi chạy, truy cập:
 * **🏢 Portal Nhân viên (Cổng 4000):** [http://localhost:4000](http://localhost:4000) — Đăng ký tài khoản nhận OTP, đăng nhập, nộp đơn xin nghỉ phép, quên mật khẩu (TTL 5 phút).
 * **📬 Hộp thư ảo Sandbox (Cổng 3000):** [http://localhost:3000](http://localhost:3000) — Xem email OTP, email Quản lý duyệt đơn và email kết quả trả về.
 
-### Cách 2: Chạy Riêng Dịch Vụ Email Gateway (Cổng 3000)
-Click đúp chuột vào file **`start.bat`** hoặc gõ lệnh:
-```bash
-npm start
-```
+### 2: Chạy Riêng Dịch Vụ Email Gateway (Cổng 3000)
+* **Windows:** Click đúp file **`start.bat`** hoặc gõ `npm start`.
+* **macOS / Linux:** Gõ **`bash start.sh`** hoặc `npm start`.
 * **Dashboard Quản Trị & Hộp thư ảo:** [http://localhost:3000](http://localhost:3000)
 
-### Cách 3: Chạy Kiểm Thử Tự Động
+### 3: Chạy Kiểm Thử Tự Động
 ```bash
 npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép
 npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker

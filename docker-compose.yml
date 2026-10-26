@@ -1,0 +1,15 @@
+services:
+  tmt-soa-system:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tmt-soa-system
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+    environment:
+      - PORT=3000
+      - DEMO_PORT=4000
+      - MODE=SANDBOX
+      - NODE_ENV=production
+    restart: unless-stopped
