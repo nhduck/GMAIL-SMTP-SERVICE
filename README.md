@@ -11,12 +11,10 @@
 ## PHÂN CHIA CÔNG VIỆC NHÓM
 
 | Thành viên | Trách nhiệm chính | Module phụ trách |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | **524H0032 - Trương Minh Thành** | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js` |
-| **524H0032 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK |`Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
+| **524H0010 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK | `Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
 | **524H0008 - Lâm Tấn Đạt** | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
-
----
 
 ## CÁCH CÀI ĐẶT & CHẠY THỬ
 
