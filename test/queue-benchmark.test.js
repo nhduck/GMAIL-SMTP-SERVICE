@@ -136,7 +136,7 @@ async function runBenchmark() {
   const hasActionBtns = actionTpl.html.includes('Duyệt Đơn') && actionTpl.html.includes('Từ Chối');
   const hasBadge = actionTpl.html.includes('CHỜ DUYỆT');
   const hasEscaped = actionTpl.html.includes('&lt;script&gt;') && !actionTpl.html.includes('<script>');
-  
+
   // Test từ chối URL độc hại (javascript:)
   const xssUrlTpl = templates.render('action-email', {
     primaryButton: { text: 'Bấm Vào', url: 'javascript:alert(1)' }

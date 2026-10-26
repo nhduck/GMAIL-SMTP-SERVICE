@@ -11,35 +11,46 @@ const leaveApp = require('../demo-app/server');
 const EMAIL_PORT = 3000;
 const DEMO_PORT = 4000;
 
-let demoServerInstance = null;
+let startedEmailLocally = false;
+let startedDemoLocally = false;
+
+async function isPortResponding(port) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 300);
+    const res = await fetch(`http://localhost:${port}/`, { signal: controller.signal });
+    clearTimeout(timeout);
+    return Boolean(res);
+  } catch (_) {
+    return false;
+  }
+}
 
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function startServers() {
-  return new Promise((resolve) => {
-    // 1. Khởi động Email Service trên cổng 3000 nếu chưa chạy
-    if (!emailServer.listening) {
-      emailServer.listen(EMAIL_PORT, () => {
-        // 2. Khởi động Demo Leave App trên cổng 4000
-        demoServerInstance = leaveApp.listen(DEMO_PORT, () => {
-          resolve();
-        });
-      });
-    } else {
-      demoServerInstance = leaveApp.listen(DEMO_PORT, () => {
-        resolve();
-      });
-    }
-  });
+  const isEmailUp = await isPortResponding(EMAIL_PORT);
+  if (!isEmailUp) {
+    await new Promise((resolve) => emailServer.listen(EMAIL_PORT, resolve));
+    startedEmailLocally = true;
+  }
+
+  const isDemoUp = await isPortResponding(DEMO_PORT);
+  if (!isDemoUp) {
+    await new Promise((resolve) => {
+      demoServerInstance = leaveApp.listen(DEMO_PORT, resolve);
+    });
+    startedDemoLocally = true;
+  }
 }
 
 async function stopServers() {
-  if (demoServerInstance) {
+  if (startedDemoLocally && demoServerInstance) {
     demoServerInstance.close();
   }
-  if (emailServer && emailServer.listening) {
+  if (startedEmailLocally && emailServer && emailServer.listening) {
     emailServer.close();
   }
 }
@@ -50,7 +61,12 @@ async function runE2ETest() {
 
   try {
     await startServers();
-    await sleep(200);
+    // Đảm bảo Gateway ở chế độ SANDBOX khi chạy bài test E2E Sandbox
+    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'SANDBOX' })
+    });
 
     // Xóa sạch hộp thư ảo Sandbox trước khi chạy
     await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`, { method: 'DELETE' });
@@ -255,6 +271,7 @@ async function runE2ETest() {
     process.exitCode = 1;
   } finally {
     await stopServers();
+    process.exit(process.exitCode || 0);
   }
 }
 
