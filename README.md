@@ -13,7 +13,7 @@
 | Thành viên | Trách nhiệm chính | Module phụ trách |
 | :--- | :--- | :--- |
 | **524H0032 - Trương Minh Thành** | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js` |
-| **524H0010 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK | `Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
+| **524H0010 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK | `Gmail-SMTP-Service.postman_collection.json`, `src/core/imap-listener.js` |
 | **524H0008 - Lâm Tấn Đạt** | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
 
 ## CÁCH CÀI ĐẶT & CHẠY THỬ & TEST THỬ
@@ -22,7 +22,7 @@
 Khởi chạy đồng thời cả hai dịch vụ độc lập (**Cổng 3000** Email Gateway & **Cổng 4000** Portal Nhân viên):
 * **Trên Windows:** Click đúp chuột vào file **`demo.bat`** (hoặc gõ `npm run demo`).
 * **Trên macOS / Ubuntu Linux:** Mở Terminal gõ **`bash demo.sh`** (hoặc `npm run demo`).
-* **Qua Docker Compose (Tùy chọn nếu mấy bro không muốn cài Node.js):**
+* **Qua Docker Compose (Tùy chọn cho môi trường không cài sẵn Node.js):**
   ```bash
   docker compose up -d
   ```
@@ -67,7 +67,7 @@ Khi cần gửi email thật ra ngoài hòm thư, các bạn chỉ cần lấy *
 Dự án bất kỳ của các bạn (Node.js, Python, Java, PHP, C#) chỉ cần gọi 1 trong 3 endpoint sau:
 
 ### 1. Xác thực tài khoản (Account Verification)
-> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số phục vụ nhóm mình demo nhanh.
+> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số phục vụ kiểm thử nhanh chóng.
 ```javascript
 // Gửi mã OTP xác thực tài khoản
 await fetch("http://localhost:3000/api/v1/verify-email", {

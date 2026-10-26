@@ -53,7 +53,7 @@ module.exports = {
       const { user } = modeManager.getCredentials();
 
       const info = await transport.sendMail({
-        from: `"Auth Email Hub" <${user}>`,
+        from: `"TMT Company" <${user}>`,
         to,
         subject,
         text,
