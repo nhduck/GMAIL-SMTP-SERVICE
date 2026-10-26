@@ -182,10 +182,15 @@ Auth-Email-Service/
 │   ├── queue-benchmark.test.js          # Benchmark 5 bài test cốt lõi (SLA, DLQ, Circuit Breaker)
 │   └── stress-test.js                   # Stress test 100 requests đồng thời đo độ trễ
 ├── .env.example                         # Mẫu khai báo biến môi trường (GMAIL, TTL, API_KEY)
+├── .dockerignore                        # Danh sách loại trừ khi đóng gói Docker Image
 ├── Auth-Email-Service.postman_collection.json # Bộ Postman Collection kiểm thử API
+├── Dockerfile                           # Dockerfile đóng gói ứng dụng (Node 20 Alpine)
+├── docker-compose.yml                   # Khởi chạy toàn bộ hệ thống bằng Docker Compose
 ├── package.json                         # Quản lý thư viện và script thực thi
-├── demo.bat                             # Script 1-click chạy đồng thời toàn bộ Demo (3000 & 4000)
-├── start.bat                            # Script 1-click khởi chạy Email Gateway (Cổng 3000)
+├── demo.bat                             # Script 1-click chạy đồng thời toàn bộ Demo trên Windows
+├── demo.sh                              # Script 1-click chạy đồng thời toàn bộ Demo trên macOS / Linux
+├── start.bat                            # Script 1-click khởi chạy Email Gateway trên Windows
+├── start.sh                             # Script 1-click khởi chạy Email Gateway trên macOS / Linux
 └── README.md                            # Hướng dẫn sử dụng và tài liệu kỹ thuật
 ```
 ---
