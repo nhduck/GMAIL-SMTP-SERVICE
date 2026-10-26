@@ -15,7 +15,27 @@ const mailer = require('./mailer');
 const app = express();
 const PORT = process.env.DEMO_PORT || 4000;
 const DEMO_APP_URL = process.env.DEMO_APP_URL || `http://localhost:${PORT}`;
-const MANAGER_EMAIL = (process.env.MANAGER_EMAIL || 'manager@demo.local').toLowerCase().trim();
+
+async function resolveManagerEmail() {
+  const envManager = (process.env.MANAGER_EMAIL || '').toLowerCase().trim();
+  if (envManager && envManager !== 'manager@demo.local') {
+    return envManager;
+  }
+
+  // Nếu chưa cấu hình MANAGER_EMAIL hoặc để mặc định demo.local, kiểm tra Gateway xem có đang ở LIVE_GMAIL không
+  try {
+    const serviceUrl = process.env.SERVICE_URL || 'http://localhost:3000';
+    const res = await fetch(`${serviceUrl}/api/v1/config`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data && json.data.mode === 'LIVE_GMAIL' && json.data.rawGmailUser) {
+        return json.data.rawGmailUser;
+      }
+    }
+  } catch (_) {}
+
+  return envManager || 'manager@demo.local';
+}
 
 app.use(cors());
 app.use(express.json());
@@ -39,10 +59,11 @@ function authenticate(req, res, next) {
 }
 
 // HEALTH & THÔNG TIN HỆ THỐNG
-app.get('/api/info', (req, res) => {
+app.get('/api/info', async (req, res) => {
+  const activeManager = await resolveManagerEmail();
   res.json({
-    app: 'Demo Ứng Dụng Nghỉ Phép (SOA Client)',
-    managerEmail: MANAGER_EMAIL,
+    app: 'Cổng Thông Tin Nhân Sự TMT Company',
+    managerEmail: activeManager,
     demoAppUrl: DEMO_APP_URL,
     serviceUrl: process.env.SERVICE_URL || 'http://localhost:3000'
   });
@@ -164,7 +185,7 @@ app.get('/api/me', authenticate, (req, res) => {
 // TẠO ĐƠN XIN NGHỈ PHÉP
 app.post('/api/leaves', authenticate, async (req, res) => {
   try {
-    const { startDate, endDate, days, reason } = req.body;
+    const { startDate, endDate, days, reason, managerEmail } = req.body;
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ success: false, error: 'Nhân viên vui lòng cung cấp đầy đủ ngày bắt đầu, ngày kết thúc và lý do nghỉ.' });
     }
@@ -218,9 +239,12 @@ app.post('/api/leaves', authenticate, async (req, res) => {
     const approveUrl = `${DEMO_APP_URL}/decision/${leave.decisionToken}?action=approve`;
     const rejectUrl = `${DEMO_APP_URL}/decision/${leave.decisionToken}?action=reject`;
 
+    // Xác định email Quản lý nhận đơn: Ưu tiên form nhập -> .env -> Tài khoản Live Gmail Gateway -> Sandbox mặc định
+    const targetManager = (managerEmail && String(managerEmail).trim().toLowerCase()) || await resolveManagerEmail();
+
     // Gọi Email Service gửi thư Action Email tới Quản lý
     const mailRes = await mailer.sendLeaveRequestToManager({
-      managerEmail: MANAGER_EMAIL,
+      managerEmail: targetManager,
       leave,
       approveUrl,
       rejectUrl
@@ -232,7 +256,7 @@ app.post('/api/leaves', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đơn xin nghỉ phép đã được gửi thành công tới Quản lý (${MANAGER_EMAIL}).`,
+      message: `Đơn xin nghỉ phép đã được gửi thành công tới Quản lý (${targetManager}).`,
       leave
     });
   } catch (err) {

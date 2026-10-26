@@ -93,7 +93,7 @@ module.exports = {
       name: name || 'Bạn',
       otp,
       verifyUrl,
-      appName: appName || 'Auth Service'
+      appName: appName || 'TMT Company'
     });
 
     return await dispatchEmail(
@@ -144,7 +144,7 @@ module.exports = {
       name: name || 'Bạn',
       resetUrl,
       expiresInMinutes: ttl,
-      appName: appName || 'Auth Service'
+      appName: appName || 'TMT Company'
     });
 
     return await dispatchEmail(

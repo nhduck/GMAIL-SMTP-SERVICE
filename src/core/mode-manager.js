@@ -19,6 +19,7 @@ module.exports = {
   getConfig: () => ({
     mode: state.mode,
     gmailUser: state.gmailUser ? `${state.gmailUser.slice(0, 3)}***@gmail.com` : null,
+    rawGmailUser: state.gmailUser || null,
     isConfigured: Boolean(state.gmailUser && state.gmailAppPassword),
     webhookUrl: state.webhookUrl
   }),
