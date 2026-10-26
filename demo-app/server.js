@@ -166,7 +166,43 @@ app.post('/api/leaves', authenticate, async (req, res) => {
   try {
     const { startDate, endDate, days, reason } = req.body;
     if (!startDate || !endDate || !reason) {
-      return res.status(400).json({ success: false, error: 'Nhân viên vui lòng cung cấp ngày bắt đầu, ngày kết thúc và lý do.' });
+      return res.status(400).json({ success: false, error: 'Nhân viên vui lòng cung cấp đầy đủ ngày bắt đầu, ngày kết thúc và lý do nghỉ.' });
+    }
+
+    // Ràng buộc 1: Ngày bắt đầu không được ở trong quá khứ
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (startDate < todayStr) {
+      return res.status(400).json({
+        success: false,
+        error: `Ngày bắt đầu nghỉ (${startDate}) không thể ở trong quá khứ (hôm nay là ${todayStr}).`
+      });
+    }
+
+    // Ràng buộc 2: Ngày kết thúc không được nhỏ hơn ngày bắt đầu
+    if (endDate < startDate) {
+      return res.status(400).json({
+        success: false,
+        error: `Ngày kết thúc (${endDate}) không được trước ngày bắt đầu (${startDate}).`
+      });
+    }
+
+    // Ràng buộc 3: Số ngày nghỉ tối thiểu 0.5 ngày
+    const numDays = parseFloat(days);
+    if (isNaN(numDays) || numDays <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Số ngày nghỉ không hợp lệ (tối thiểu 0.5 ngày).'
+      });
+    }
+
+    // Ràng buộc 4: Lý do xin nghỉ tối thiểu 3 ký tự
+    const cleanReason = String(reason).trim();
+    if (cleanReason.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vui lòng nhập lý do xin nghỉ rõ ràng (tối thiểu 3 ký tự).'
+      });
     }
 
     const leave = store.createLeave({
@@ -174,8 +210,8 @@ app.post('/api/leaves', authenticate, async (req, res) => {
       employeeName: req.user.name,
       startDate,
       endDate,
-      days: days || 1,
-      reason
+      days: numDays,
+      reason: cleanReason
     });
 
     // Tạo link an toàn cho Quản lý (chỉ mở trang xác nhận GET, không duyệt thẳng)

@@ -44,7 +44,8 @@ module.exports = {
     return await requestEmailService('/api/v1/verify-email', {
       to,
       name,
-      otp
+      otp,
+      appName: 'TMT Company'
     });
   },
 
@@ -56,6 +57,7 @@ module.exports = {
       subject,
       template: 'action-email',
       variables: {
+        appName: 'TMT Company',
         title: subject,
         greeting: 'Chào Quản lý,',
         intro: `Nhân viên ${leave.employeeName} (${leave.employeeEmail}) vừa gửi một đơn xin nghỉ phép mới trên hệ thống:`,
@@ -82,6 +84,7 @@ module.exports = {
       subject,
       template: 'action-email',
       variables: {
+        appName: 'TMT Company',
         title: subject,
         greeting: `Chào ${leave.employeeName},`,
         intro: isApproved
@@ -96,7 +99,7 @@ module.exports = {
           { label: 'Lý do ban đầu', value: leave.reason },
           { label: 'Thời điểm xử lý', value: new Date(leave.decidedAt || Date.now()).toLocaleString('vi-VN') }
         ],
-        footer: 'Email kết quả tự động từ Hệ thống Quản Lý Nghỉ Phép Nhân Sự.'
+        footer: 'Email kết quả tự động từ Cổng Thông Tin Nhân Sự TMT Company.'
       }
     });
   },
@@ -107,7 +110,8 @@ module.exports = {
       to,
       name,
       resetUrl,
-      expiresInMinutes: 5
+      expiresInMinutes: 5,
+      appName: 'TMT Company'
     });
   }
 };

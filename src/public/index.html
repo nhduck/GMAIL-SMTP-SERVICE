@@ -101,8 +101,13 @@
             <input type="text" id="testSubject" placeholder="Tiêu đề email..." value="" />
           </div>
 
+          <div class="form-group" id="groupOtp">
+            <label>Mã OTP (Tùy chọn - nếu để trống Gateway sẽ tự sinh 6 số):</label>
+            <input type="text" id="testOtp" maxlength="6" placeholder="vd: 889922 (hoặc để trống)" value="" />
+          </div>
+
           <div class="form-group" id="groupVerifyUrl" style="display: none;">
-            <label>Link xác thực (Tùy chọn - nếu bỏ trống sẽ tự sinh mã OTP 6 số):</label>
+            <label>Link xác thực (Tùy chọn - thay cho mã OTP):</label>
             <input type="url" id="testVerifyUrl" placeholder="https://myapp.com/verify?token=xyz" value="" />
           </div>
 

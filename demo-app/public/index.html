@@ -87,7 +87,6 @@
           <div class="alert alert-info">
             Mã OTP xác thực đã được gửi đến <b id="otpTargetEmail"></b>. Vui lòng kiểm tra hộp thư!
           </div>
-          <div id="sandboxOtpAlert" style="display: none;" class="alert alert-success"></div>
           <form onsubmit="handleVerifyOtp(event)">
             <div class="form-group">
               <label style="text-align: center;">Nhập mã xác thực OTP (6 chữ số):</label>
@@ -220,10 +219,33 @@
     let pendingOtpEmail = null;
     let resetTokenFromUrl = null;
 
-    // Khởi tạo ngày mặc định
+    // Khởi tạo ngày mặc định và ràng buộc không cho chọn ngày trong quá khứ
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('leaveStart').value = today;
-    document.getElementById('leaveEnd').value = today;
+    const startInput = document.getElementById('leaveStart');
+    const endInput = document.getElementById('leaveEnd');
+    const daysInput = document.getElementById('leaveDays');
+
+    startInput.value = today;
+    startInput.min = today;
+    endInput.value = today;
+    endInput.min = today;
+
+    // Tự động tính số ngày và ràng buộc ngày kết thúc >= ngày bắt đầu
+    function updateDateConstraints() {
+      endInput.min = startInput.value;
+      if (endInput.value < startInput.value) {
+        endInput.value = startInput.value;
+      }
+      const d1 = new Date(startInput.value);
+      const d2 = new Date(endInput.value);
+      if (!isNaN(d1) && !isNaN(d2)) {
+        const diffDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1);
+        daysInput.value = diffDays;
+      }
+    }
+
+    startInput.addEventListener('change', updateDateConstraints);
+    endInput.addEventListener('change', updateDateConstraints);
 
     // Kiểm tra Hash URL xem có phải là link reset password không (#reset-xxxx)
     window.addEventListener('load', () => {
@@ -279,11 +301,6 @@
         if (res.ok) {
           pendingOtpEmail = email;
           document.getElementById('otpTargetEmail').innerText = email;
-          if (data.sandboxOtp) {
-            const sbBox = document.getElementById('sandboxOtpAlert');
-            sbBox.innerHTML = `🧪 <b>[Sandbox Hint]:</b> Mã OTP gửi qua Email Gateway là: <b style="font-size: 18px;">${data.sandboxOtp}</b>`;
-            sbBox.style.display = 'block';
-          }
           switchAuthTab('otp');
         } else {
           showAlert(data.error || 'Đăng ký thất bại', 'error');
@@ -380,14 +397,32 @@
     // 4. Tạo đơn xin nghỉ phép
     async function handleCreateLeave(e) {
       e.preventDefault();
-      const btn = document.getElementById('btnSubmitLeave');
-      btn.disabled = true;
-      btn.innerText = 'Đang xử lý & gửi thư...';
 
       const startDate = document.getElementById('leaveStart').value;
       const endDate = document.getElementById('leaveEnd').value;
-      const days = document.getElementById('leaveDays').value;
-      const reason = document.getElementById('leaveReason').value;
+      const days = parseFloat(document.getElementById('leaveDays').value);
+      const reason = document.getElementById('leaveReason').value.trim();
+
+      if (startDate < today) {
+        showAlert(`Ngày bắt đầu nghỉ (${startDate}) không thể ở trong quá khứ!`, 'error');
+        return;
+      }
+      if (endDate < startDate) {
+        showAlert('Ngày kết thúc không được trước ngày bắt đầu!', 'error');
+        return;
+      }
+      if (isNaN(days) || days <= 0) {
+        showAlert('Số ngày nghỉ phải lớn hơn 0 (tối thiểu 0.5 ngày)!', 'error');
+        return;
+      }
+      if (reason.length < 3) {
+        showAlert('Vui lòng nhập lý do xin nghỉ cụ thể (tối thiểu 3 ký tự)!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitLeave');
+      btn.disabled = true;
+      btn.innerText = 'Đang gửi yêu cầu...';
 
       try {
         const res = await fetch('/api/leaves', {
@@ -410,7 +445,7 @@
         showAlert(err.message, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerText = '📤 Gửi Đơn Xin Nghỉ';
+        btn.innerText = 'Gửi Đơn Xin Nghỉ';
       }
     }
 

@@ -11,7 +11,7 @@ const TEMPLATES = {
       const name = vars.name || 'Khách hàng';
       const otp = vars.otp || '';
       const verifyUrl = vars.verifyUrl || '';
-      const appName = vars.appName || 'Hệ thống SOA Service';
+      const appName = vars.appName || 'TMT Company';
 
       const actionSection = verifyUrl
         ? `
@@ -83,7 +83,7 @@ const TEMPLATES = {
       const name = vars.name || 'Quý khách';
       const resetUrl = vars.resetUrl || '#';
       const expiresIn = vars.expiresInMinutes || config.RESET_TTL_MINUTES;
-      const appName = vars.appName || 'Hệ thống SOA Service';
+      const appName = vars.appName || 'TMT Company';
 
       return `
         <!DOCTYPE html>
@@ -150,7 +150,7 @@ const TEMPLATES = {
     render: (vars = {}) => {
       const title = vars.title || 'Thông Báo Mới';
       const content = vars.content || '<p>Nội dung thông báo từ hệ thống.</p>';
-      const appName = vars.appName || 'Hệ thống SOA Service';
+      const appName = vars.appName || 'TMT Company';
 
       return `
         <!DOCTYPE html>
@@ -195,7 +195,7 @@ const TEMPLATES = {
   'action-email': {
     defaultSubject: 'Thông báo cần xử lý',
     render: (vars = {}) => {
-      const appName = escapeHtml(vars.appName || 'Hệ thống Dịch Vụ SOA');
+      const appName = escapeHtml(vars.appName || 'TMT Company');
       const title = escapeHtml(vars.title || 'Thông Báo Mới');
       const greeting = escapeHtml(vars.greeting || 'Xin chào,');
       const intro = escapeHtml(vars.intro || '');

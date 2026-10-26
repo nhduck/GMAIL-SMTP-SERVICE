@@ -101,6 +101,10 @@ async function runE2ETest() {
 
     // BƯỚC 3: TẠO ĐƠN XIN NGHỈ PHÉP
     console.log('\n--- BƯỚC 3: Tạo đơn xin nghỉ phép gửi tới Quản lý ---');
+    const dStart = new Date();
+    dStart.setDate(dStart.getDate() + 1);
+    const dEnd = new Date();
+    dEnd.setDate(dEnd.getDate() + 3);
     const leaveRes = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
       method: 'POST',
       headers: {
@@ -108,8 +112,8 @@ async function runE2ETest() {
         'Authorization': `Bearer ${sessionToken}`
       },
       body: JSON.stringify({
-        startDate: '2026-11-05',
-        endDate: '2026-11-07',
+        startDate: dStart.toISOString().split('T')[0],
+        endDate: dEnd.toISOString().split('T')[0],
         days: 3,
         reason: '<script>alert("hack")</script>Nghỉ phép cá nhân theo kế hoạch'
       })
