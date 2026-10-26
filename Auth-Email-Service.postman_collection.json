@@ -33,10 +33,79 @@
 			]
 		},
 		{
-			"name": "2. Email Service (Gửi & Đọc Mail)",
+			"name": "2. Email Service (3 Chức Năng Cốt Lõi Đề Bài)",
 			"item": [
 				{
-					"name": "Send Email (Thành công - SLA < 45ms)",
+					"name": "1. Verify Email (Account Verification OTP)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\",\n  \"otp\": \"654321\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/verify-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "verify-email"]
+						},
+						"description": "Gửi email xác thực tài khoản kèm mã OTP (Ở chế độ Live cần truyền otp hoặc verifyUrl; ở Sandbox có thể bỏ trống để tự sinh)."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Password Reset (Đặt Lại Mật Khẩu)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"name\": \"Nguyễn Văn A\",\n  \"resetUrl\": \"https://myapp.com/reset-password?token=sec_abc123\",\n  \"expiresInMinutes\": 5\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/password-reset",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "password-reset"]
+						},
+						"description": "Gửi email khôi phục mật khẩu có liên kết đặt lại và thời hạn hết hạn 5 phút (mặc định)."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Send Template HTML Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"to\": \"student@tdtu.edu.vn\",\n  \"template\": \"custom-html\",\n  \"variables\": {\n    \"title\": \"Chào Mừng Tân Sinh Viên TDTU\",\n    \"content\": \"<p>Chúc mừng bạn đã hoàn tất đăng ký hệ thống.</p>\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/send",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "send"]
+						},
+						"description": "Gửi email HTML định dạng sẵn theo template của Gateway."
+					},
+					"response": []
+				},
+				{
+					"name": "Send Raw Email (Generic / Tùy Biến)",
 					"request": {
 						"method": "POST",
 						"header": [

@@ -1,7 +1,4 @@
-/**
- * Mode Manager: Quản lý trạng thái SANDBOX vs LIVE_GMAIL
- * Thành viên phụ trách: Thành viên 1
- */
+// Mode Manager: Quản lý trạng thái SANDBOX vs LIVE_GMAIL
 
 const state = {
   mode: process.env.MODE || 'SANDBOX', // 'SANDBOX' | 'LIVE_GMAIL'

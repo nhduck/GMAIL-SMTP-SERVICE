@@ -1,7 +1,4 @@
-/**
- * IMAP IDLE Listener: Lắng nghe thư mới thời gian thực từ imap.gmail.com:993
- * Thành viên phụ trách: Thành viên 2
- */
+// IMAP IDLE Listener: Lắng nghe thư mới thời gian thực từ imap.gmail.com:993
 
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
@@ -34,7 +31,7 @@ module.exports = {
       const lock = await client.getMailboxLock('INBOX');
       isListening = true;
 
-      // Lắng nghe sự kiện thư mới (exists)
+      // Lắng nghe sự kiện thư mới
       client.on('exists', async (data) => {
         console.log(`[IMAP IDLE] Phát hiện email mới! (Tổng số thư: ${data.count})`);
         try {

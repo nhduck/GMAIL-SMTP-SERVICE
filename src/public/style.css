@@ -94,6 +94,28 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
   color: white;
 }
 
+.btn-preset {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-preset:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: white;
+}
+.btn-preset.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
 /* Tab Contents */
 .tab-content { display: none; }
 .tab-content.active { display: block; }

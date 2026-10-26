@@ -1,14 +1,11 @@
-/**
- * Circuit Breaker: Cơ chế ngắt mạch thông minh bảo vệ tài khoản Gmail
- * Chống bị Google chặn IP hoặc tạm khóa tài khoản khi có sự cố mạng/spam
- * Thành viên phụ trách: Thành (Core Backend)
- */
+// Circuit Breaker: Cơ chế ngắt mạch thông minh bảo vệ tài khoản Gmail
+// Chống bị Google chặn IP hoặc tạm khóa tài khoản khi có sự cố mạng/spam
 
 class CircuitBreaker {
   constructor(options = {}) {
     this.failureThreshold = options.failureThreshold || 5; // Số lần lỗi liên tiếp để ngắt
     this.resetTimeout = options.resetTimeout || 30000;      // 30 giây chờ trước khi thử lại (HALF_OPEN)
-    
+
     this.state = 'CLOSED'; // 'CLOSED' (bình thường), 'OPEN' (ngắt), 'HALF_OPEN' (thử nghiệm)
     this.consecutiveFailures = 0;
     this.lastFailureTime = null;

@@ -1,58 +1,406 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dự Án Khách Hàng (Demo Tích Hợp 1 Dòng)</title>
+  <title>App Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
       color: #1e293b;
       margin: 0;
       padding: 40px 20px;
     }
+
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
-    h1 { color: #2563eb; margin-top: 0; }
+
+    .header-box {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
     .badge {
       background: #dbeafe;
       color: #1d4ed8;
-      padding: 4px 10px;
+      padding: 6px 14px;
       border-radius: 20px;
       font-size: 0.85rem;
       font-weight: 600;
+      display: inline-block;
+      margin-bottom: 12px;
     }
-    pre {
-      background: #0f172a;
-      color: #38bdf8;
-      padding: 14px;
+
+    h1 {
+      margin: 0 0 10px 0;
+      color: #0f172a;
+      font-size: 1.8rem;
+    }
+
+    p.desc {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .main-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .nav-auth-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 12px;
+    }
+
+    .auth-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 8px 16px;
       border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-tab-btn.active {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.95;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-msg {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status-msg.success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      display: block;
+    }
+
+    .status-msg.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      display: block;
+    }
+
+    .code-preview-pane {
+      background: #0f172a;
+      border-radius: 14px;
+      padding: 20px;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .code-header {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre {
+      margin: 0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #38bdf8;
       overflow-x: auto;
+      flex: 1;
+    }
+
+    .tip-box {
+      background: #1e293b;
+      border-left: 3px solid #38bdf8;
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      margin-top: 14px;
     }
   </style>
-  <!-- 1 DÒNG NHÚNG DUY NHẤT: GIỐNG BOOTSTRAP -->
-  <script src="/embed.js"></script>
 </head>
+
 <body>
   <div class="container">
-    <span class="badge">Demo Client Application</span>
-    <h1>Website Bán Hàng / Đặt Lịch (Client App)</h1>
-    <p>Trang web này mô phỏng một dự án bất kỳ của khách hàng có nhu cầu gửi email liên hệ. Khách hàng chỉ cần dán <b>1 dòng script</b> vào thẻ head và đặt thẻ <code>&lt;mail-widget&gt;</code>:</p>
+    <div class="header-box">
+      <span class="badge">Sample Client Application (Mô Phỏng Ứng Dụng Môn Học)</span>
+      <h1>Ứng Dụng Mẫu: Đăng Ký & Đặt Lại Mật Khẩu</h1>
+      <p class="desc">Minh họa cách một dự án sinh viên khác tích hợp Email Gateway chỉ bằng vài dòng JavaScript gọi
+        API.</p>
+    </div>
 
-    <pre><code>&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
-&lt;mail-widget target="admin@cuahang.com" title="Đặt Lịch Tư Vấn Sản Phẩm"&gt;&lt;/mail-widget&gt;</code></pre>
+    <div class="main-card">
+      <!-- Left: Interactive Form -->
+      <div>
+        <div class="nav-auth-tabs">
+          <button class="auth-tab-btn active" id="tabRegister">1. Đăng Ký (Verify OTP)</button>
+          <button class="auth-tab-btn" id="tabForgot">2. Quên Mật Khẩu</button>
+        </div>
 
-    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <!-- Form 1: Đăng ký (Account Verification) -->
+        <form id="formRegister">
+          <div class="form-group">
+            <label>Họ và tên:</label>
+            <input type="text" id="regName" required value="Nguyễn Văn A" />
+          </div>
+          <div class="form-group">
+            <label>Địa chỉ Email:</label>
+            <input type="email" id="regEmail" required value="student@tdtu.edu.vn" />
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu khởi tạo:</label>
+            <input type="password" id="regPass" required value="P@ssw0rd123" />
+          </div>
+          <button type="submit" class="btn-submit" id="btnSubmitRegister">Đăng Ký & Gửi Mail Xác Thực</button>
+          <div id="registerStatus" class="status-msg"></div>
+        </form>
 
-    <!-- Widget form tự động render bên dưới -->
-    <mail-widget target="admin@cuahang.com" title="Đặt Lịch Tư Vấn Sản Phẩm" button-text="Gửi Đặt Lịch"></mail-widget>
+        <!-- Form 2: Quên Mật Khẩu (Password Reset) -->
+        <form id="formForgot" style="display: none;">
+          <div class="form-group">
+            <label>Email tài khoản cần khôi phục:</label>
+            <input type="email" id="forgotEmail" required value="student@tdtu.edu.vn" />
+          </div>
+          <div class="form-group">
+            <label>Tên người dùng (Tùy chọn):</label>
+            <input type="text" id="forgotName" value="Nguyễn Văn A" />
+          </div>
+          <button type="submit" class="btn-submit" id="btnSubmitForgot">Gửi Liên Kết Đặt Lại Mật Khẩu</button>
+          <div id="forgotStatus" class="status-msg"></div>
+        </form>
+      </div>
+
+      <!-- Right: Live Code Snippet Inspection -->
+      <div class="code-preview-pane">
+        <div class="code-header">
+          <span>Mã Nguồn Tích Hợp (6 Dòng Code)</span>
+          <span style="color: #10b981;">● REST API</span>
+        </div>
+        <pre id="codeDisplay">// 1. Gọi Email Gateway gửi mã xác thực
+await fetch("http://localhost:3000/api/v1/verify-email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "student@tdtu.edu.vn",
+    name: "Nguyễn Văn A"
+  })
+});</pre>
+
+        <div class="tip-box">
+          💡 <strong>Lưu ý kiến trúc SOA:</strong>
+          <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+            <li>Trong thực tế, các API này được gọi <strong>server-to-server</strong> từ backend của ứng dụng, không gọi
+              trực tiếp từ trình duyệt của người dùng cuối.</li>
+            <li>Mã OTP chỉ hiển thị trực tiếp ở đây khi chạy chế độ <strong>Sandbox (Dev)</strong> để tiện kiểm thử. Ở
+              chế độ Live thật, OTP chỉ nằm trong hòm thư người nhận và không bao giờ trả về qua API response.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <script>
+    const tabRegister = document.getElementById('tabRegister');
+    const tabForgot = document.getElementById('tabForgot');
+    const formRegister = document.getElementById('formRegister');
+    const formForgot = document.getElementById('formForgot');
+    const codeDisplay = document.getElementById('codeDisplay');
+
+    // Tab Switch
+    tabRegister.addEventListener('click', () => {
+      tabRegister.classList.add('active');
+      tabForgot.classList.remove('active');
+      formRegister.style.display = 'block';
+      formForgot.style.display = 'none';
+      codeDisplay.innerText = `// 1. Gọi Email Gateway gửi mã xác thực OTP
+await fetch("http://localhost:3000/api/v1/verify-email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "${document.getElementById('regEmail').value}",
+    name: "${document.getElementById('regName').value}"
+  })
+});`;
+    });
+
+    tabForgot.addEventListener('click', () => {
+      tabForgot.classList.add('active');
+      tabRegister.classList.remove('active');
+      formRegister.style.display = 'none';
+      formForgot.style.display = 'block';
+      codeDisplay.innerText = `// 2. Gọi Email Gateway gửi link Reset Password
+await fetch("http://localhost:3000/api/v1/password-reset", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "${document.getElementById('forgotEmail').value}",
+    name: "${document.getElementById('forgotName').value}",
+    resetUrl: "https://myapp.com/reset-password?token=sec_token_998811"
+  })
+});`;
+    });
+
+    // Form Register Submit
+    formRegister.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitRegister');
+      const status = document.getElementById('registerStatus');
+      const email = document.getElementById('regEmail').value;
+      const name = document.getElementById('regName').value;
+
+      btn.disabled = true;
+      btn.innerText = 'Đang xử lý...';
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/v1/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: email, name })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          status.className = 'status-msg success';
+          status.innerHTML = `✓ Đăng ký thành công! Đã gửi email xác thực đến <b>${email}</b>. (Mã OTP: <b>${data.otp || 'đã tạo'}</b>). Xem tại <a href="/" target="_blank">Dashboard</a>.`;
+        } else {
+          status.className = 'status-msg error';
+          status.innerText = `✕ Lỗi: ${data.error}`;
+        }
+      } catch (err) {
+        status.className = 'status-msg error';
+        status.innerText = `✕ Lỗi mạng: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Đăng Ký & Gửi Mail Xác Thực';
+      }
+    });
+
+    // Form Forgot Submit
+    formForgot.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitForgot');
+      const status = document.getElementById('forgotStatus');
+      const email = document.getElementById('forgotEmail').value;
+      const name = document.getElementById('forgotName').value;
+
+      btn.disabled = true;
+      btn.innerText = 'Đang xử lý...';
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/v1/password-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: email,
+            name,
+            resetUrl: `https://myapp.com/reset-password?token=sec_${Date.now()}`
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          status.className = 'status-msg success';
+          status.innerHTML = `✓ Đã gửi email đặt lại mật khẩu đến <b>${email}</b> (Hiệu lực: ${data.expiresInMinutes || 5} phút). Xem tại <a href="/" target="_blank">Dashboard</a>.`;
+        } else {
+          status.className = 'status-msg error';
+          status.innerText = `✕ Lỗi: ${data.error}`;
+        }
+      } catch (err) {
+        status.className = 'status-msg error';
+        status.innerText = `✕ Lỗi mạng: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Gửi Liên Kết Đặt Lại Mật Khẩu';
+      }
+    });
+  </script>
 </body>
+
 </html>
