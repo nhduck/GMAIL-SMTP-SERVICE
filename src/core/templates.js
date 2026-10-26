@@ -1,17 +1,14 @@
-/**
- * Template Engine cho Email: Account Verification, Password Reset & HTML Email
- * Thành viên phụ trách: Thành (Core Backend Lead)
- */
+// Template Engine cho Email
 
 const config = require('../config');
 
-// Bộ mẫu HTML Email Responsive, hỗ trợ Mobile, Desktop và Dark mode
+// Bộ mẫu HTML Email Responsive
 const TEMPLATES = {
-  // 1. Mẫu Xác Thực Tài Khoản (Account Verification)
+  // Mẫu Xác Thực Tài Khoản
   'verify-email': {
     defaultSubject: 'Xác thực tài khoản của bạn',
     render: (vars = {}) => {
-      const name = vars.name || 'Quý khách';
+      const name = vars.name || 'Khách hàng';
       const otp = vars.otp || '';
       const verifyUrl = vars.verifyUrl || '';
       const appName = vars.appName || 'Hệ thống SOA Service';
@@ -195,9 +192,7 @@ const TEMPLATES = {
   }
 };
 
-/**
- * Render template dựa trên tên và biến truyền vào
- */
+// Render template dựa trên tên và biến truyền vào
 function render(templateName, variables = {}) {
   const tpl = TEMPLATES[templateName];
   if (!tpl) {

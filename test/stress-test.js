@@ -1,9 +1,6 @@
-/**
- * Stress-Test Suite: Kiểm thử chịu tải 100 Concurrent Requests (Đồng thời)
- * Đo lường: Throughput (RPS), Latency Distribution (Min, Max, Avg, P95, P99),
- * Mức tiêu thụ RAM và Tỷ lệ thành công SLA < 45ms
- * Dành cho Thành (Core Backend Lead) dùng để lấy số liệu và biểu đồ cho Slide Seminar
- */
+// Stress-Test Suite: Kiểm thử chịu tải 100 Concurrent Requests (Đồng thời)
+// Đo lường: Throughput (RPS), Latency Distribution (Min, Max, Avg, P95, P99),
+// Mức tiêu thụ RAM và Tỷ lệ thành công SLA < 45ms
 
 const { server } = require('../src/server');
 
@@ -21,9 +18,8 @@ async function isServerRunning() {
 }
 
 async function runStressTest() {
-  console.log('========================================================================');
-  console.log(`🔥 BẮT ĐẦU KIỂM THỬ CHỊU TẢI CAO (STRESS-TEST: ${TOTAL_REQUESTS} CONCURRENT REQUESTS)`);
-  console.log('========================================================================\n');
+  console.log(`BẮT ĐẦU KIỂM THỬ CHỊU TẢI CAO (STRESS-TEST: ${TOTAL_REQUESTS} CONCURRENT REQUESTS)`);
+  console.log('\n');
 
   let localServerStarted = false;
 
@@ -41,7 +37,7 @@ async function runStressTest() {
   // 2. Ghi nhận thông số RAM ban đầu
   const initialMemory = process.memoryUsage();
 
-  console.log(`🚀 Đang kích hoạt ${TOTAL_REQUESTS} requests gửi mail ĐỒNG THỜI (Full Concurrent Blast)...`);
+  console.log(` Đang kích hoạt ${TOTAL_REQUESTS} requests gửi mail ĐỒNG THỜI (Full Concurrent Blast)...`);
   const testStartTime = process.hrtime();
 
   // Tạo 100 Promise gửi request cùng lúc
@@ -110,19 +106,18 @@ async function runStressTest() {
   try {
     const qRes = await fetch(`${BASE_URL}/api/v1/queue/stats`);
     queueStats = (await qRes.json()).queue;
-  } catch (e) {}
+  } catch (e) { }
 
   // 5. In bảng kết quả chi tiết
-  console.log('\n========================================================================');
-  console.log('📊 BÁO CÁO KẾT QUẢ KIỂM THỬ HIỆU NĂNG & CHỊU TẢI (STRESS TEST REPORT)');
-  console.log('========================================================================\n');
+  console.log('BÁO CÁO KẾT QUẢ KIỂM THỬ HIỆU NĂNG & CHỊU TẢI');
+  console.log('\n');
 
   console.log('1. THÔNG SỐ TẢI & TỶ LỆ TIẾP NHẬN:');
-  console.log(`   - Tổng số request:             ${TOTAL_REQUESTS}`);
-  console.log(`   - Số request thành công (202): ${successCount}/${TOTAL_REQUESTS} (${((successCount / TOTAL_REQUESTS) * 100).toFixed(1)}%)`);
-  console.log(`   - Số request thất bại:         ${failCount}`);
-  console.log(`   - Tổng thời gian hoàn tất:     ${totalDurationMs.toFixed(2)} ms (~${(totalDurationMs / 1000).toFixed(2)} giây)`);
-  console.log(`   - Throughput (Thông lượng):    ${throughputRps} requests/giây (RPS)\n`);
+  console.log(` - Tổng số request:             ${TOTAL_REQUESTS}`);
+  console.log(` - Số request thành công (202): ${successCount}/${TOTAL_REQUESTS} (${((successCount / TOTAL_REQUESTS) * 100).toFixed(1)}%)`);
+  console.log(` - Số request thất bại:         ${failCount}`);
+  console.log(` - Tổng thời gian hoàn tất:     ${totalDurationMs.toFixed(2)} ms (~${(totalDurationMs / 1000).toFixed(2)} giây)`);
+  console.log(` - Throughput (Thông lượng):    ${throughputRps} requests/giây (RPS)\n`);
 
   const slaLatencies = results.map(r => r.slaLatencyMs).sort((a, b) => a - b);
   const avgSlaLatency = slaLatencies.reduce((a, b) => a + b, 0) / slaLatencies.length;
@@ -130,34 +125,33 @@ async function runStressTest() {
   const maxSlaLatency = slaLatencies[slaLatencies.length - 1];
 
   console.log('2. ĐỘ TRỄ XỬ LÝ SERVER (SLA BENCHMARK < 45MS):');
-  console.log(`   - Server SLA trung bình:       ${avgSlaLatency.toFixed(2)} ms`);
-  console.log(`   - Server SLA nhanh nhất:       ${minSlaLatency.toFixed(2)} ms`);
-  console.log(`   - Server SLA chậm nhất:        ${maxSlaLatency.toFixed(2)} ms`);
-  console.log(`   - Đạt cam kết SLA (< 45ms):    ${avgSlaLatency < 45 ? '✅ ĐẠT XUẤT SẮC (SLA PASSED)' : '❌ CHƯA ĐẠT'}\n`);
+  console.log(` - Server SLA trung bình:       ${avgSlaLatency.toFixed(2)} ms`);
+  console.log(` - Server SLA nhanh nhất:       ${minSlaLatency.toFixed(2)} ms`);
+  console.log(` - Server SLA chậm nhất:        ${maxSlaLatency.toFixed(2)} ms`);
+  console.log(` - Đạt cam kết SLA (< 45ms):    ${avgSlaLatency < 45 ? '✅ ĐẠT XUẤT SẮC (SLA PASSED)' : '❌ CHƯA ĐẠT'}\n`);
 
   console.log('3. ĐỘ TRỄ MẠNG CLIENT KHI GỬI ĐỒNG THỜI 100 SOCKETS (CLIENT E2E):');
-  console.log(`   - Nhanh nhất (Min Latency):    ${minLatency.toFixed(2)} ms`);
-  console.log(`   - Trung bình (Avg Latency):    ${avgLatency.toFixed(2)} ms`);
-  console.log(`   - Trung vị (Median P50):       ${p50.toFixed(2)} ms`);
-  console.log(`   - Phân vị 95 (P95):            ${p95.toFixed(2)} ms`);
-  console.log(`   - Chậm nhất (Max Latency):     ${maxLatency.toFixed(2)} ms\n`);
+  console.log(` - Nhanh nhất (Min Latency):    ${minLatency.toFixed(2)} ms`);
+  console.log(` - Trung bình (Avg Latency):    ${avgLatency.toFixed(2)} ms`);
+  console.log(` - Trung vị (Median P50):       ${p50.toFixed(2)} ms`);
+  console.log(` - Phân vị 95 (P95):            ${p95.toFixed(2)} ms`);
+  console.log(` - Chậm nhất (Max Latency):     ${maxLatency.toFixed(2)} ms\n`);
 
   console.log('4. MỨC TIÊU THỤ TÀI NGUYÊN BỘ NHỚ (RAM FOOTPRINT):');
-  console.log(`   - Heap Used ban đầu:           ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   - Heap Used sau tải 100 req:   ${(finalMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   - Mức tăng RAM:                ${((finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024).toFixed(2)} MB (Cực kỳ nhẹ)\n`);
+  console.log(` - Heap Used ban đầu:           ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+  console.log(` - Heap Used sau tải 100 req:   ${(finalMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+  console.log(` - Mức tăng RAM:                ${((finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024).toFixed(2)} MB (Cực kỳ nhẹ)\n`);
 
   if (queueStats) {
     console.log('5. TRẠNG THÁI HÀNG ĐỢI (QUEUE STATUS):');
-    console.log(`   - Tổng job đã Enqueue:         ${queueStats.metrics.totalEnqueued}`);
-    console.log(`   - Số job đang chờ trong Queue: ${queueStats.queueLength}`);
-    console.log(`   - Số worker đang active:       ${queueStats.activeWorkers}/${queueStats.concurrency}`);
-    console.log(`   - Dead-Letter Queue (DLQ):     ${queueStats.deadLetterQueueLength} job hỏng\n`);
+    console.log(` - Tổng job đã Enqueue:         ${queueStats.metrics.totalEnqueued}`);
+    console.log(` - Số job đang chờ trong Queue: ${queueStats.queueLength}`);
+    console.log(` - Số worker đang active:       ${queueStats.activeWorkers}/${queueStats.concurrency}`);
+    console.log(` - Dead-Letter Queue (DLQ):     ${queueStats.deadLetterQueueLength} job hỏng\n`);
   }
 
-  console.log('========================================================================');
-  console.log('🎉 KẾT LUẬN: HỆ THỐNG HOÀN TOÀN KHÔNG BỊ NGHẼN HOẶC DROP REQUEST!');
-  console.log('========================================================================\n');
+  console.log(' KẾT LUẬN: HỆ THỐNG HOÀN TOÀN KHÔNG BỊ NGHẼN HOẶC DROP REQUEST!');
+  console.log('\n');
 
   // Đóng server nếu do script tự bật
   if (localServerStarted) {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,8 +8,10 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
   <div class="app-container">
     <!-- Header -->
@@ -17,26 +20,26 @@
         <div class="logo-icon">⚡</div>
         <div>
           <h1>Auth-Email Hub</h1>
-          <p class="subtitle">Hybrid Email-as-a-Service Gateway (SOA Architecture)</p>
+          <p class="subtitle">Email-as-a-Service Gateway</p>
         </div>
       </div>
-      
+
       <!-- Mode Switcher -->
       <div class="mode-switch-wrapper">
         <span class="mode-label">Chế độ:</span>
         <div class="toggle-container">
-          <button id="btnSandbox" class="mode-btn active">🧪 Sandbox (Dev)</button>
-          <button id="btnLive" class="mode-btn">🚀 Live Gmail</button>
+          <button id="btnSandbox" class="mode-btn active"> Sandbox (Dev)</button>
+          <button id="btnLive" class="mode-btn"> Live Gmail</button>
         </div>
       </div>
     </header>
 
     <!-- Main Navigation Tabs -->
     <nav class="nav-tabs">
-      <button class="tab-btn active" data-tab="inboxTab">📬 Virtual Inbox (<span id="mailCount">0</span>)</button>
-      <button class="tab-btn" data-tab="testTab">✉️ Test Gửi Email</button>
-      <button class="tab-btn" data-tab="configTab">⚙️ Cấu Hình Gmail</button>
-      <button class="tab-btn" data-tab="codeTab">💻 Mã Nhúng 1 Dòng (DX)</button>
+      <button class="tab-btn active" data-tab="inboxTab"> Virtual Inbox (<span id="mailCount">0</span>)</button>
+      <button class="tab-btn" data-tab="testTab"> Test Gửi Email</button>
+      <button class="tab-btn" data-tab="configTab"> Cấu Hình Gmail</button>
+      <button class="tab-btn" data-tab="codeTab"> Mã Nhúng 1 Dòng (DX)</button>
     </nav>
 
     <!-- TAB 1: Virtual Inbox -->
@@ -44,7 +47,8 @@
       <div class="section-header">
         <div>
           <h2>Hộp Thư Ảo Thời Gian Thực (Sandbox Inspector)</h2>
-          <p class="desc">Email gửi đến trong chế độ Sandbox sẽ hiển thị ngay tại đây mà không cần tài khoản hay mật khẩu.</p>
+          <p class="desc">Email gửi đến trong chế độ Sandbox sẽ hiển thị ngay tại đây mà không cần tài khoản hay mật
+            khẩu.</p>
         </div>
         <button id="btnClearMails" class="btn btn-outline-danger">Dọn Sạch Hộp Thư</button>
       </div>
@@ -64,17 +68,18 @@
       <div class="card card-form">
         <h2>Kiểm Thử 3 Chức Năng Cốt Lõi (Seminar Demo)</h2>
         <p class="desc">Chọn nhanh kịch bản kiểm thử theo đúng yêu cầu đề bài:</p>
-        
+
         <!-- Preset Buttons -->
         <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-          <button type="button" class="btn btn-preset active" id="btnPresetVerify">1️⃣ Account Verification (OTP)</button>
+          <button type="button" class="btn btn-preset active" id="btnPresetVerify">1️⃣ Account Verification
+            (OTP)</button>
           <button type="button" class="btn btn-preset" id="btnPresetReset">2️⃣ Password Reset (Link)</button>
           <button type="button" class="btn btn-preset" id="btnPresetCustom">3️⃣ Custom HTML Email</button>
         </div>
 
         <form id="testSendForm">
           <input type="hidden" id="selectedEndpoint" value="/api/v1/verify-email" />
-          
+
           <div class="form-group">
             <label>Gửi đến (To):</label>
             <input type="email" id="testTo" required placeholder="nhanvien@example.com" value="student@tdtu.edu.vn" />
@@ -97,7 +102,8 @@
 
           <div class="form-group" id="groupResetUrl" style="display: none;">
             <label>Link đặt lại mật khẩu (Reset URL):</label>
-            <input type="url" id="testResetUrl" placeholder="https://myapp.com/reset-password?token=abc123xyz" value="https://myapp.com/reset-password?token=sec_token_998811" />
+            <input type="url" id="testResetUrl" placeholder="https://myapp.com/reset-password?token=abc123xyz"
+              value="https://myapp.com/reset-password?token=sec_token_998811" />
           </div>
 
           <div class="form-group" id="groupHtml" style="display: none;">
@@ -105,7 +111,8 @@
             <textarea id="testHtml" rows="5" placeholder="Nhập nội dung HTML..."></textarea>
           </div>
 
-          <button type="submit" id="btnSendTest" class="btn btn-primary" style="margin-top: 10px;">Bấm Gửi Ngay (<span id="currentModeLabel">Sandbox</span>)</button>
+          <button type="submit" id="btnSendTest" class="btn btn-primary" style="margin-top: 10px;">Bấm Gửi Ngay (<span
+              id="currentModeLabel">Sandbox</span>)</button>
           <div id="testStatus" class="status-box"></div>
         </form>
       </div>
@@ -124,7 +131,8 @@
           <div class="form-group">
             <label>Mật khẩu ứng dụng (App Password 16 ký tự):</label>
             <input type="password" id="cfgAppPassword" placeholder="xxxx xxxx xxxx xxxx" />
-            <small class="helper-text">💡 Cách lấy: Vào Tài khoản Google &gt; Bảo mật &gt; Xác minh 2 bước &gt; Mật khẩu ứng dụng.</small>
+            <small class="helper-text"> Cách lấy: Vào Tài khoản Google &gt; Bảo mật &gt; Xác minh 2 bước &gt; Mật khẩu
+              ứng dụng.</small>
           </div>
           <div class="form-group">
             <label>Webhook URL (Tùy chọn - Nhận thông báo khi có mail mới):</label>
@@ -171,7 +179,7 @@ await fetch("http://localhost:3000/api/v1/password-reset", {
   -H "Content-Type: application/json" \
   -d '{"to": "dev@tdtu.edu.vn", "template": "custom-html", "variables": {"title": "Chào mừng!", "content": "<p>Nội dung HTML</p>"}}'</code></pre>
 
-        <h3 style="margin-top: 30px; opacity: 0.7;">✨ Phần mở rộng: Nhúng Web Component 1 dòng (HTML)</h3>
+        <h3 style="margin-top: 30px; opacity: 0.7;"> Phần mở rộng: Nhúng Web Component 1 dòng (HTML)</h3>
         <pre><code>&lt;script src="http://localhost:3000/embed.js"&gt;&lt;/script&gt;
 &lt;mail-widget target="admin@cuahang.com" title="Liên Hệ"&gt;&lt;/mail-widget&gt;</code></pre>
       </div>
@@ -180,4 +188,5 @@ await fetch("http://localhost:3000/api/v1/password-reset", {
 
   <script src="app.js"></script>
 </body>
+
 </html>

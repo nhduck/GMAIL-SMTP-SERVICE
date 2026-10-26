@@ -1,8 +1,5 @@
-/**
- * SMTP Live Driver: Kết nối smtp.gmail.com:587 với Connection Pool
- * và tích hợp Circuit Breaker bảo vệ tài khoản Gmail
- * Thành viên phụ trách: Thành (Core Backend)
- */
+// SMTP Live Driver: Kết nối smtp.gmail.com:587 với Connection Pool
+// tích hợp Circuit Breaker bảo vệ tài khoản Gmail
 
 const nodemailer = require('nodemailer');
 const modeManager = require('./mode-manager');
@@ -26,7 +23,7 @@ function getTransporter() {
       maxConnections: 3,   // Giữ tối đa 3 socket đồng thời
       maxMessages: 100,    // Tối đa 100 email trên 1 connection
       rateDelta: 1000,     // 1 giây
-      rateLimit: 14,       // Tối đa 14 email / giây (chuẩn an toàn của Gmail)
+      rateLimit: 14,       // Tối đa 14 email / giây
       auth: { user, pass }
     });
 
@@ -75,7 +72,7 @@ module.exports = {
     if (transporter) {
       try {
         transporter.close();
-      } catch (e) {}
+      } catch (e) { }
       transporter = null;
     }
     circuitBreaker.manualReset();

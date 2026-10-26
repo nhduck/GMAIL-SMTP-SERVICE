@@ -96,7 +96,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Kết nối WebSocket thành công tới Email Hub.' }));
 });
 
-// Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để sinh viên cài đặt nhẹ và nhanh nhất)
+// Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để các bạn cài đặt nhẹ và nhanh nhất)
 if (process.env.ENABLE_INBOUND === 'true') {
   try {
     const imapListener = require('./core/imap-listener');
@@ -114,26 +114,24 @@ if (process.env.ENABLE_INBOUND === 'true') {
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`====================================================`);
-    console.log(`🚀 [Email Gateway] Server đang chạy tại: http://localhost:${PORT}`);
-    console.log(`🎛️  [Dashboard UI] Truy cập: http://localhost:${PORT}`);
-    console.log(`🧪 [Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
-    console.log(`📊 [Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
-    console.log(`☠️  [DLQ Monitor] Truy cập: http://localhost:${PORT}/api/v1/queue/dlq`);
-    console.log(`====================================================`);
+    console.log(`[Email Gateway] Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`[Dashboard UI] Truy cập: http://localhost:${PORT}`);
+    console.log(`[Trang Demo]   Truy cập: http://localhost:${PORT}/demo/index.html`);
+    console.log(`[Queue Stats]  Truy cập: http://localhost:${PORT}/api/v1/queue/stats`);
+    console.log(`[DLQ Monitor] Truy cập: http://localhost:${PORT}/api/v1/queue/dlq`);
   });
 }
 
 module.exports = { app, server };
 
-// --- CƠ CHẾ GRACEFUL SHUTDOWN (TẮT MÁY CHỦ AN TOÀN) ---
+// GRACEFUL SHUTDOWN
 let isShuttingDown = false;
 
 async function handleShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  console.log(`\n🛑 [Server] Nhận tín hiệu ${signal}. Đang thực hiện Graceful Shutdown...`);
+  console.log(`\n [Server] Nhận tín hiệu ${signal}. Đang thực hiện Graceful Shutdown...`);
 
   // 1. Ngừng nhận thêm request HTTP mới
   server.close(async () => {
@@ -149,15 +147,15 @@ async function handleShutdown(signal) {
         try {
           const imapListener = require('./core/imap-listener');
           await imapListener.stopListening();
-        } catch (e) {}
+        } catch (e) { }
       }
       console.log('✓ [Server] Đã ngắt kết nối SMTP an toàn.');
 
       // 4. Đóng toàn bộ client WebSocket
       wss.clients.forEach((client) => client.close());
-      console.log('✓ [Server] Đã đóng toàn bộ kết nối WebSocket.');
+      console.log('[Server] Đã đóng toàn bộ kết nối WebSocket.');
 
-      console.log('🎉 [Server] Toàn bộ tài nguyên đã giải phóng. Máy chủ dừng thành công!');
+      console.log('[Server] Toàn bộ tài nguyên đã giải phóng. Máy chủ dừng thành công!');
       process.exit(0);
     } catch (err) {
       console.error('[Shutdown Error]', err.message);
@@ -167,7 +165,7 @@ async function handleShutdown(signal) {
 
   // Phòng hờ nếu bị treo quá 10 giây thì ép dừng
   setTimeout(() => {
-    console.error('⚠️ [Server] Hết thời gian chờ 10s. Buộc dừng tiến trình.');
+    console.error('[Server] Hết thời gian chờ 10s. Buộc dừng tiến trình.');
     process.exit(1);
   }, 10000);
 }

@@ -1,7 +1,4 @@
-/**
- * Webhook Dispatcher: Bắn payload JSON về các ứng dụng Client khi có thư đến
- * Thành viên phụ trách: Thành viên 2
- */
+// Webhook Dispatcher: Bắn payload JSON về các ứng dụng Client khi có thư đến
 
 const modeManager = require('./mode-manager');
 
