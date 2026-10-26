@@ -117,7 +117,34 @@ async function runBenchmark() {
   // 3. Custom HTML
   const customTpl = templates.render('custom-html', { title: 'Chào Mừng', content: '<p>Xin chào</p>' });
   const hasCustom = customTpl.html.includes('Chào Mừng') && customTpl.html.includes('<p>Xin chào</p>');
-  console.log(`Render template Custom HTML Email: ${hasCustom ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}\n`);
+  console.log(`Render template Custom HTML Email: ${hasCustom ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
+
+  // 4. Action Email (Mẫu thư hành động tương tác tổng quát)
+  const actionTpl = templates.render('action-email', {
+    title: 'Đơn Xin Nghỉ Phép Cần Duyệt',
+    greeting: 'Chào Quản lý,',
+    intro: 'Nhân viên vừa tạo đơn mới.',
+    badge: { text: 'CHỜ DUYỆT', tone: 'warning' },
+    details: [
+      { label: 'Nhân viên', value: 'Nguyễn Văn A' },
+      { label: 'Lý do', value: '<script>alert("xss")</script>Nghỉ ốm' }
+    ],
+    primaryButton: { text: 'Duyệt Đơn', url: 'https://myapp.com/decision/token123?action=approve' },
+    secondaryButton: { text: 'Từ Chối', url: 'https://myapp.com/decision/token123?action=reject' }
+  });
+
+  const hasActionBtns = actionTpl.html.includes('Duyệt Đơn') && actionTpl.html.includes('Từ Chối');
+  const hasBadge = actionTpl.html.includes('CHỜ DUYỆT');
+  const hasEscaped = actionTpl.html.includes('&lt;script&gt;') && !actionTpl.html.includes('<script>');
+  
+  // Test từ chối URL độc hại (javascript:)
+  const xssUrlTpl = templates.render('action-email', {
+    primaryButton: { text: 'Bấm Vào', url: 'javascript:alert(1)' }
+  });
+  const blocksBadUrl = !xssUrlTpl.html.includes('javascript:alert(1)');
+
+  const actionPassed = hasActionBtns && hasBadge && hasEscaped && blocksBadUrl;
+  console.log(`Render template Action Email (Nút, Badge, XSS Escape, URL Sanitization): ${actionPassed ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}\n`);
 
   console.log('TOÀN BỘ 5 BỘ TEST ĐỀ BÀI & HIỆU NĂNG ĐÃ VƯỢT QUA!');
 }

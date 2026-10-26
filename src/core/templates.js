@@ -189,8 +189,173 @@ const TEMPLATES = {
         </html>
       `;
     }
+  },
+
+  // 4. Mẫu Email Hành Động Tổng Quát (Action Email - Bảng chi tiết, nhãn trạng thái, nút Duyệt / Từ chối)
+  'action-email': {
+    defaultSubject: 'Thông báo cần xử lý',
+    render: (vars = {}) => {
+      const appName = escapeHtml(vars.appName || 'Hệ thống Dịch Vụ SOA');
+      const title = escapeHtml(vars.title || 'Thông Báo Mới');
+      const greeting = escapeHtml(vars.greeting || 'Xin chào,');
+      const intro = escapeHtml(vars.intro || '');
+      const footer = escapeHtml(vars.footer || '');
+
+      // Render Badge nhãn trạng thái nếu có
+      let badgeHtml = '';
+      if (vars.badge && vars.badge.text) {
+        const tone = vars.badge.tone || 'info';
+        const toneStyles = {
+          success: 'background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;',
+          danger: 'background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;',
+          warning: 'background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;',
+          info: 'background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;'
+        };
+        const selectedStyle = toneStyles[tone] || toneStyles.info;
+        badgeHtml = `
+          <div style="margin-bottom: 16px;">
+            <span style="display: inline-block; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; ${selectedStyle}">
+              ${escapeHtml(vars.badge.text)}
+            </span>
+          </div>
+        `;
+      }
+
+      // Render Bảng Details danh sách { label, value } nếu có
+      let detailsHtml = '';
+      if (Array.isArray(vars.details) && vars.details.length > 0) {
+        const rows = vars.details.map((item, idx) => {
+          const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+          return `
+            <tr style="background-color: ${bg};">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569; font-size: 13px; width: 35%; border-bottom: 1px solid #e2e8f0;">
+                ${escapeHtml(item.label)}
+              </td>
+              <td style="padding: 10px 14px; color: #0f172a; font-size: 14px; border-bottom: 1px solid #e2e8f0;">
+                ${escapeHtml(item.value)}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        detailsHtml = `
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; border-collapse: collapse; overflow: hidden;">
+            ${rows}
+          </table>
+        `;
+      }
+
+      // Render Action Buttons nếu có
+      let buttonsHtml = '';
+      const primaryUrl = sanitizeUrl(vars.primaryButton && vars.primaryButton.url);
+      const secondaryUrl = sanitizeUrl(vars.secondaryButton && vars.secondaryButton.url);
+
+      if (primaryUrl || secondaryUrl) {
+        let pBtn = '';
+        let sBtn = '';
+
+        if (primaryUrl) {
+          const pText = escapeHtml((vars.primaryButton && vars.primaryButton.text) || 'Xác nhận');
+          pBtn = `
+            <a href="${primaryUrl}" target="_blank" style="display: inline-block; min-width: 130px; text-align: center; background: linear-gradient(135deg, #16a34a, #15803d); color: #ffffff; text-decoration: none; padding: 13px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 6px; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);">
+              ✓ ${pText}
+            </a>
+          `;
+        }
+
+        if (secondaryUrl) {
+          const sText = escapeHtml((vars.secondaryButton && vars.secondaryButton.text) || 'Từ chối');
+          sBtn = `
+            <a href="${secondaryUrl}" target="_blank" style="display: inline-block; min-width: 130px; text-align: center; background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; text-decoration: none; padding: 13px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 6px; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);">
+              ✕ ${sText}
+            </a>
+          `;
+        }
+
+        buttonsHtml = `
+          <div style="text-align: center; margin: 28px 0 16px 0;">
+            ${pBtn}
+            ${sBtn}
+          </div>
+          <p style="text-align: center; color: #64748b; font-size: 12px; margin-top: 4px;">
+            Nhấn vào nút trên để mở trang xác nhận quyết định an toàn.
+          </p>
+        `;
+      }
+
+      const footerSection = footer
+        ? `<p style="margin: 20px 0 0 0; font-size: 13px; color: #64748b;">${footer}</p>`
+        : '';
+
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${title}</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 10px;">
+            <tr>
+              <td align="center">
+                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                  <!-- Header -->
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 26px 28px; text-align: left;">
+                      <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">${appName}</h1>
+                    </td>
+                  </tr>
+                  <!-- Body -->
+                  <tr>
+                    <td style="padding: 32px 28px; color: #334155; line-height: 1.6;">
+                      ${badgeHtml}
+                      <h2 style="margin: 0 0 14px 0; color: #0f172a; font-size: 20px; font-weight: 700;">${title}</h2>
+                      <p style="margin: 0 0 10px 0; font-size: 15px; color: #1e293b;"><strong>${greeting}</strong></p>
+                      ${intro ? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #334155;">${intro}</p>` : ''}
+                      ${detailsHtml}
+                      ${buttonsHtml}
+                      ${footerSection}
+                    </td>
+                  </tr>
+                  <!-- Footer -->
+                  <tr>
+                    <td style="background-color: #f8fafc; padding: 18px 28px; text-align: center; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 12px;">
+                      <p style="margin: 0 0 4px 0;">Email gửi tự động từ <strong>${appName}</strong> qua Gmail SMTP Service.</p>
+                      <p style="margin: 0;">© ${new Date().getFullYear()} ${appName}. All rights reserved.</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+    }
   }
 };
+
+// Hàm escape ký tự đặc biệt chống XSS / HTML Injection
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Hàm kiểm tra và làm sạch URL (chỉ chấp nhận http:// hoặc https://)
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
 
 // Render template dựa trên tên và biến truyền vào
 function render(templateName, variables = {}) {
@@ -199,7 +364,7 @@ function render(templateName, variables = {}) {
     throw new Error(`Template "${templateName}" không tồn tại. Các mẫu hỗ trợ: ${Object.keys(TEMPLATES).join(', ')}`);
   }
   return {
-    subject: variables.subject || tpl.defaultSubject,
+    subject: variables.subject || variables.title || tpl.defaultSubject,
     html: tpl.render(variables)
   };
 }
@@ -207,5 +372,7 @@ function render(templateName, variables = {}) {
 module.exports = {
   TEMPLATES,
   render,
-  getSupportedTemplates: () => Object.keys(TEMPLATES)
+  getSupportedTemplates: () => Object.keys(TEMPLATES),
+  escapeHtml,
+  sanitizeUrl
 };

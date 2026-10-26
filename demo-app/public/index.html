@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Dịch Vụ Nghỉ Phép TMT Company</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div>
+        <div class="brand-title">
+          🏢 HR Leave Portal
+          <span class="badge-tag">SOA Client (Port 4000)</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+          Ứng dụng mẫu minh họa tích hợp dịch vụ Email Gateway (Cổng 3000) qua chuẩn REST API
+        </p>
+      </div>
+      <div id="userHeader" class="user-bar">
+        <a href="http://localhost:3000" target="_blank"
+          style="font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 600;">
+          📥 Hộp thư ảo Sandbox (Cổng 3000) ↗
+        </a>
+      </div>
+    </header>
+
+    <!-- Thông báo toàn cục -->
+    <div id="globalAlert" style="display: none;"></div>
+
+    <!-- MÀN HÌNH CHƯA ĐĂNG NHẬP -->
+    <div id="authView">
+      <div class="card" style="max-width: 480px; margin: 40px auto;">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Đăng Nhập</button>
+          <button class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Đăng Ký Tài Khoản</button>
+          <button class="auth-tab" id="tabForgotBtn" onclick="switchAuthTab('forgot')" style="display: none;">Quên Mật
+            Khẩu</button>
+        </div>
+
+        <!-- Form Đăng Nhập -->
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label>Địa chỉ Email</label>
+            <input type="email" id="loginEmail" placeholder="vd: nguyen_van_a@tdtu.edu.vn" required>
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" required>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <a href="javascript:void(0)" onclick="switchAuthTab('forgot')"
+              style="font-size: 13px; color: var(--primary); text-decoration: none;">
+              Quên mật khẩu?
+            </a>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng Nhập</button>
+        </form>
+
+        <!-- Form Đăng Ký -->
+        <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label>Họ và tên nhân viên</label>
+            <input type="text" id="regName" placeholder="vd: Nguyễn Văn A" required>
+          </div>
+          <div class="form-group">
+            <label>Địa chỉ Email</label>
+            <input type="email" id="regEmail" placeholder="vd: nhanvien@tdtu.edu.vn" required>
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+            <input type="password" id="regPassword" minlength="6" placeholder="Tạo mật khẩu" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            Đăng Ký & Nhận Mã OTP
+          </button>
+          <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 12px;">
+            Dịch vụ sẽ gửi mã OTP 6 số qua Email Gateway (chuẩn Account Verification).
+          </p>
+        </form>
+
+        <!-- Form Xác Thực OTP -->
+        <div id="otpSection" style="display: none;">
+          <div class="alert alert-info">
+            📧 Mã OTP đã được gửi đến <b id="otpTargetEmail"></b>. Vui lòng kiểm tra hòm thư!
+          </div>
+          <div id="sandboxOtpAlert" style="display: none;" class="alert alert-success"></div>
+          <form onsubmit="handleVerifyOtp(event)">
+            <div class="form-group">
+              <label>Nhập mã xác thực OTP (6 chữ số):</label>
+              <input type="text" id="otpInput" maxlength="6" class="otp-box" placeholder="------" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-success" style="width: 100%;">
+              Xác Nhận Kích Hoạt Tài Khoản
+            </button>
+            <button type="button" class="btn btn-link" style="width: 100%; margin-top: 10px;"
+              onclick="switchAuthTab('register')">
+              ← Quay lại đăng ký email khác
+            </button>
+          </form>
+        </div>
+
+        <!-- Form Quên Mật Khẩu -->
+        <form id="forgotForm" style="display: none;" onsubmit="handleForgot(event)">
+          <div class="form-group">
+            <label>Nhập Email tài khoản cần đặt lại mật khẩu:</label>
+            <input type="email" id="forgotEmail" placeholder="vd: nhanvien@tdtu.edu.vn" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            Gửi Liên Kết Đặt Lại Mật Khẩu (5 Phút)
+          </button>
+          <button type="button" class="btn btn-link" style="width: 100%; margin-top: 10px;"
+            onclick="switchAuthTab('login')">
+            ← Quay lại đăng nhập
+          </button>
+        </form>
+
+        <!-- Form Nhập Mật Khẩu Mới (Khi nhấn link từ email) -->
+        <form id="resetPasswordForm" style="display: none;" onsubmit="handleResetPassword(event)">
+          <div class="alert alert-info">
+            🔑 Đang đặt lại mật khẩu với liên kết an toàn (TTL 5 phút).
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu mới (tối thiểu 6 ký tự):</label>
+            <input type="password" id="newPasswordInput" minlength="6" placeholder="Nhập mật khẩu mới" required>
+          </div>
+          <button type="submit" class="btn btn-success" style="width: 100%;">
+            Lưu Mật Khẩu Mới
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MÀN HÌNH ĐÃ ĐĂNG NHẬP (cho employee) -->
+    <div id="employeePortal" style="display: none;">
+      <!-- Thanh thông tin nhân viên -->
+      <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
+        <div>
+          <span style="font-size: 13px; color: var(--text-muted);">Đang đăng nhập với vai trò:</span>
+          <div style="font-size: 16px; font-weight: 700; color: var(--text-main);" id="currentUserName">--</div>
+          <div style="font-size: 13px; color: var(--primary);" id="currentUserEmail">--</div>
+        </div>
+        <button class="btn btn-danger" onclick="handleLogout()" style="padding: 6px 14px; font-size: 13px;">
+          Đăng Xuất
+        </button>
+      </div>
+
+      <!-- Khối Tạo Đơn Nghỉ Phép Mới -->
+      <div class="card">
+        <h2 class="card-title">📝 Tạo Đơn Xin Nghỉ Phép Mới</h2>
+        <form id="createLeaveForm" onsubmit="handleCreateLeave(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 120px; gap: 16px;">
+            <div class="form-group">
+              <label>Từ ngày</label>
+              <input type="date" id="leaveStart" required>
+            </div>
+            <div class="form-group">
+              <label>Đến ngày</label>
+              <input type="date" id="leaveEnd" required>
+            </div>
+            <div class="form-group">
+              <label>Số ngày</label>
+              <input type="number" id="leaveDays" min="0.5" step="0.5" value="1" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Lý do xin nghỉ phép</label>
+            <textarea id="leaveReason" rows="3"
+              placeholder="Ghi rõ lý do (ví dụ: Nghỉ khám sức khỏe định kỳ, việc gia đình...)" required></textarea>
+          </div>
+          <button type="submit" id="btnSubmitLeave" class="btn btn-primary">
+            📤 Gửi Đơn Xin Nghỉ
+          </button>
+        </form>
+      </div>
+
+      <!-- Danh Sách Đơn Nghỉ Phép Của Tôi -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="card-title" style="margin-bottom: 0;">📋 Lịch Sử Đơn Nghỉ Phép Của Bạn</h2>
+          <button class="btn btn-link" onclick="loadMyLeaves()" style="text-decoration: none; font-weight: 600;">
+            🔄 Làm mới danh sách
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Mã đơn</th>
+                <th>Thời gian nghỉ</th>
+                <th>Số ngày</th>
+                <th>Lý do</th>
+                <th>Ngày gửi</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="leavesTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                  Đang tải danh sách...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State quản lý
+    let currentToken = localStorage.getItem('demo_token') || null;
+    let pendingOtpEmail = null;
+    let resetTokenFromUrl = null;
+
+    // Khởi tạo ngày mặc định
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('leaveStart').value = today;
+    document.getElementById('leaveEnd').value = today;
+
+    // Kiểm tra Hash URL xem có phải là link reset password không (#reset-xxxx)
+    window.addEventListener('load', () => {
+      checkHashRoute();
+      if (currentToken) {
+        checkAuth();
+      }
+    });
+
+    function checkHashRoute() {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#reset-')) {
+        resetTokenFromUrl = hash.replace('#reset-', '');
+        switchAuthTab('reset-password');
+      }
+    }
+
+    function showAlert(msg, type = 'success') {
+      const alertBox = document.getElementById('globalAlert');
+      alertBox.className = `alert alert-${type}`;
+      alertBox.innerText = msg;
+      alertBox.style.display = 'block';
+      setTimeout(() => {
+        alertBox.style.display = 'none';
+      }, 6000);
+    }
+
+    function switchAuthTab(tab) {
+      document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+      document.getElementById('otpSection').style.display = tab === 'otp' ? 'block' : 'none';
+      document.getElementById('forgotForm').style.display = tab === 'forgot' ? 'block' : 'none';
+      document.getElementById('resetPasswordForm').style.display = tab === 'reset-password' ? 'block' : 'none';
+
+      document.getElementById('tabLoginBtn').className = `auth-tab ${tab === 'login' ? 'active' : ''}`;
+      document.getElementById('tabRegisterBtn').className = `auth-tab ${tab === 'register' ? 'active' : ''}`;
+    }
+
+    // 1. Đăng ký tài khoản
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          pendingOtpEmail = email;
+          document.getElementById('otpTargetEmail').innerText = email;
+          if (data.sandboxOtp) {
+            const sbBox = document.getElementById('sandboxOtpAlert');
+            sbBox.innerHTML = `🧪 <b>[Sandbox Hint]:</b> Mã OTP gửi qua Email Gateway là: <b style="font-size: 18px;">${data.sandboxOtp}</b>`;
+            sbBox.style.display = 'block';
+          }
+          switchAuthTab('otp');
+        } else {
+          showAlert(data.error || 'Đăng ký thất bại', 'error');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    // 2. Xác thực OTP
+    async function handleVerifyOtp(e) {
+      e.preventDefault();
+      const otp = document.getElementById('otpInput').value;
+
+      try {
+        const res = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingOtpEmail, otp })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('Kích hoạt tài khoản thành công! Đang vào hệ thống...', 'success');
+          loginSuccess(data.token, data.user);
+        } else {
+          showAlert(data.error || 'Mã OTP không đúng', 'error');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    // 3. Đăng nhập
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          loginSuccess(data.token, data.user);
+        } else {
+          showAlert(data.error || 'Đăng nhập không thành công', 'error');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    function loginSuccess(token, user) {
+      currentToken = token;
+      localStorage.setItem('demo_token', token);
+      document.getElementById('authView').style.display = 'none';
+      document.getElementById('employeePortal').style.display = 'block';
+      document.getElementById('currentUserName').innerText = user.name;
+      document.getElementById('currentUserEmail').innerText = user.email;
+      loadMyLeaves();
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          loginSuccess(currentToken, data.user);
+        } else {
+          handleLogout();
+        }
+      } catch {
+        handleLogout();
+      }
+    }
+
+    function handleLogout() {
+      currentToken = null;
+      localStorage.removeItem('demo_token');
+      document.getElementById('employeePortal').style.display = 'none';
+      document.getElementById('authView').style.display = 'block';
+      switchAuthTab('login');
+    }
+
+    // 4. Tạo đơn xin nghỉ phép
+    async function handleCreateLeave(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitLeave');
+      btn.disabled = true;
+      btn.innerText = 'Đang xử lý & gửi thư...';
+
+      const startDate = document.getElementById('leaveStart').value;
+      const endDate = document.getElementById('leaveEnd').value;
+      const days = document.getElementById('leaveDays').value;
+      const reason = document.getElementById('leaveReason').value;
+
+      try {
+        const res = await fetch('/api/leaves', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}`
+          },
+          body: JSON.stringify({ startDate, endDate, days, reason })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert(data.message, 'success');
+          document.getElementById('leaveReason').value = '';
+          loadMyLeaves();
+        } else {
+          showAlert(data.error || 'Lỗi gửi đơn', 'error');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📤 Gửi Đơn Xin Nghỉ';
+      }
+    }
+
+    // 5. Tải danh sách đơn
+    async function loadMyLeaves() {
+      const tbody = document.getElementById('leavesTableBody');
+      try {
+        const res = await fetch('/api/leaves', {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.leaves && data.leaves.length > 0) {
+          tbody.innerHTML = data.leaves.map(l => {
+            let statusBadge = '<span class="status-badge status-pending">Chờ Duyệt</span>';
+            if (l.status === 'APPROVED') {
+              statusBadge = '<span class="status-badge status-approved">✓ Đã Duyệt</span>';
+            } else if (l.status === 'REJECTED') {
+              statusBadge = '<span class="status-badge status-rejected">✕ Từ Chối</span>';
+            }
+
+            return `
+              <tr>
+                <td><code>${l.id}</code></td>
+                <td><b>${l.startDate}</b> đến <b>${l.endDate}</b></td>
+                <td>${l.days} ngày</td>
+                <td>${escapeHtml(l.reason)}</td>
+                <td style="color: var(--text-muted); font-size: 13px;">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
+                <td>${statusBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Bạn chưa gửi đơn xin nghỉ phép nào.</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color: var(--danger); text-align: center;">Lỗi tải danh sách: ${err.message}</td></tr>`;
+      }
+    }
+
+    // 6. Quên mật khẩu
+    async function handleForgot(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgotEmail').value;
+      try {
+        const res = await fetch('/api/forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        showAlert(data.message, 'success');
+        switchAuthTab('login');
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    // 7. Đặt lại mật khẩu mới
+    async function handleResetPassword(e) {
+      e.preventDefault();
+      const newPassword = document.getElementById('newPasswordInput').value;
+      try {
+        const res = await fetch('/api/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: resetTokenFromUrl, newPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert(data.message, 'success');
+          window.location.hash = '';
+          switchAuthTab('login');
+        } else {
+          showAlert(data.error || 'Đặt lại mật khẩu thất bại', 'error');
+        }
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
+    }
+  </script>
+</body>
+
+</html>

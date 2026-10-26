@@ -18,22 +18,27 @@
 
 ## CÁCH CÀI ĐẶT & CHẠY THỬ
 
-### Cách 1: Chạy 1-Click trên Windows
-1. Clone mã nguồn về máy:
-   ```bash
-   git clone https://github.com/nhduck/Auth-Email-Service.git
-   cd Auth-Email-Service
-   ```
-2. Click đúp chuột vào file **`start.bat`**.  
-   *Hệ thống sẽ tự động cài gói thư viện giúp bạn và mở trình duyệt tại [http://localhost:3000](http://localhost:3000).*
-
-### Cách 2: Chạy bằng dòng lệnh (Terminal)
+### Cách 1: Chạy Demo Toàn Luồng Nghiệp Vụ (Khuyên Dùng Để Đánh Giá)
+Chỉ cần chạy 1 lệnh duy nhất hoặc click đúp file **`demo.bat`** trên Windows:
 ```bash
-npm install
+npm run demo
+```
+Lệnh sẽ khởi chạy đồng thời cả hai dịch vụ độc lập:
+* **🏢 Portal Nhân viên (Cổng 4000):** [http://localhost:4000](http://localhost:4000) — Đăng ký tài khoản nhận OTP, đăng nhập, nộp đơn xin nghỉ phép, quên mật khẩu (TTL 5 phút).
+* **📬 Hộp thư ảo Sandbox (Cổng 3000):** [http://localhost:3000](http://localhost:3000) — Xem email OTP, email Quản lý duyệt đơn và email kết quả trả về tức thì.
+
+### Cách 2: Chạy Riêng Dịch Vụ Email Gateway (Cổng 3000)
+Click đúp chuột vào file **`start.bat`** hoặc gõ lệnh:
+```bash
 npm start
 ```
 * **Dashboard Quản Trị & Hộp thư ảo:** [http://localhost:3000](http://localhost:3000)
-* **Ứng Dụng Mẫu (Demo App Auth):** [http://localhost:3000/demo/index.html](http://localhost:3000/demo/index.html)
+
+### Cách 3: Chạy Kiểm Thử Tự Động (Test Suite)
+```bash
+npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép (E2E trong 2 giây)
+npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker
+```
 
 ---
 
@@ -102,13 +107,53 @@ curl -X POST http://localhost:3000/api/v1/send \
     }
   }'
 ```
+
+### 4. Gửi Email Hành Động Tương Tác (Action Email - Nút Duyệt / Từ Chối)
+```javascript
+// Gửi email chứa bảng thông tin chi tiết và 2 nút hành động (Duyệt / Từ chối)
+await fetch("http://localhost:3000/api/v1/send", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "manager@demo.local",
+    subject: "Đơn Xin Nghỉ Phép Cần Phê Duyệt",
+    template: "action-email",
+    variables: {
+      title: "Đơn Xin Nghỉ Phép Cần Phê Duyệt",
+      greeting: "Chào Quản lý,",
+      intro: "Nhân viên Nguyễn Văn A vừa nộp một đơn xin nghỉ phép mới:",
+      badge: { text: "CHỜ PHÊ DUYỆT", tone: "warning" },
+      details: [
+        { label: "Nhân viên", value: "Nguyễn Văn A (a@tdtu.edu.vn)" },
+        { label: "Thời gian nghỉ", value: "Từ 05/11 đến 07/11 (3 ngày)" },
+        { label: "Lý do", value: "Nghỉ phép cá nhân" }
+      ],
+      primaryButton: { text: "Duyệt Đơn", url: "http://localhost:4000/decision/token123?action=approve" },
+      secondaryButton: { text: "Từ Chối", url: "http://localhost:4000/decision/token123?action=reject" }
+    }
+  })
+});
+```
+
+---
+
 ## CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```text
 Auth-Email-Service/
-├── demo/                                # Ứng dụng web mẫu minh họa tích hợp
-│   └── index.html                       # Demo Auth Client (Đăng ký OTP & Quên mật khẩu)
-├── src/                                 # Toàn bộ mã nguồn dịch vụ Email Gateway
+├── demo-app/                            # Ứng dụng xin nghỉ phép nghiệp vụ (SOA Client - Cổng 4000)
+│   ├── public/                          # Giao diện web portal
+│   │   ├── index.html                   # Portal nhân viên (Đăng ký OTP, Tạo đơn, Quên mật khẩu)
+│   │   ├── decision.html                # Cổng xác nhận phê duyệt an toàn của Quản lý
+│   │   └── style.css                    # CSS giao diện
+│   ├── mailer.js                        # Client gọi Email Service Gateway qua chuẩn REST API
+│   ├── server.js                        # Máy chủ nghiệp vụ Express (Cổng 4000)
+│   └── store.js                         # In-memory store (Người dùng, OTP, Đơn nghỉ, Token 1 lần)
+├── demo/                                # (Bản cũ) Form HTML Demo Auth trực tiếp từ trình duyệt
+│   └── index.html                       # Demo Auth Client cũ
+├── scripts/                             # Kịch bản điều khiển hệ thống
+│   └── run-demo.js                      # Chạy đồng thời Email Gateway & Demo App với log có tiền tố
+├── src/                                 # Toàn bộ mã nguồn dịch vụ Email Gateway (Cổng 3000)
 │   ├── api/                             # Tầng Controller tiếp nhận HTTP REST API
 │   │   ├── config.controller.js         # API đổi chế độ Sandbox/Live & lưu tài khoản
 │   │   └── mail.controller.js           # API verify-email, password-reset, send template
@@ -118,7 +163,7 @@ Auth-Email-Service/
 │   │   ├── queue.js                     # Hàng đợi phi khóa (Non-blocking), Retry & DLQ
 │   │   ├── sandbox-store.js             # Hộp thư ảo lưu trữ email trên RAM ở Sandbox
 │   │   ├── smtp-live.js                 # Pool kết nối SMTP gửi thư thật qua Gmail (cổng 587)
-│   │   ├── templates.js                 # Template Engine render HTML Responsive cho 3 use case
+│   │   ├── templates.js                 # Template Engine render HTML Responsive (OTP, Reset 5m, Action)
 │   │   ├── validator.js                 # Kiểm tra tính hợp lệ của email và dữ liệu đầu vào
 │   │   ├── imap-listener.js             # (Mở rộng) Lắng nghe thư đến cổng 993 IMAP
 │   │   └── webhook-dispatcher.js        # (Mở rộng) Bắn Webhook khi có thư đến
@@ -131,12 +176,14 @@ Auth-Email-Service/
 │   ├── config.js                        # Cấu hình tập trung (TTL 5 phút, API Key, Quota)
 │   └── server.js                        # Điểm khởi chạy hệ thống (Express + WebSocket + Shutdown)
 ├── test/                                # Bộ kịch bản automation test
+│   ├── demo-e2e.test.js                 # Test toàn luồng nghiệp vụ tự động (Sandbox E2E)
 │   ├── queue-benchmark.test.js          # Benchmark 5 bài test cốt lõi (SLA, DLQ, Circuit Breaker)
 │   └── stress-test.js                   # Stress test 100 requests đồng thời đo độ trễ
 ├── .env.example                         # Mẫu khai báo biến môi trường (GMAIL, TTL, API_KEY)
 ├── Auth-Email-Service.postman_collection.json # Bộ Postman Collection kiểm thử API
 ├── package.json                         # Quản lý thư viện và script thực thi
-├── start.bat                            # Script 1-click khởi chạy tức thì trên Windows
+├── demo.bat                             # Script 1-click chạy đồng thời toàn bộ Demo (3000 & 4000)
+├── start.bat                            # Script 1-click khởi chạy Email Gateway (Cổng 3000)
 └── README.md                            # Hướng dẫn sử dụng và tài liệu kỹ thuật
 ```
 ---

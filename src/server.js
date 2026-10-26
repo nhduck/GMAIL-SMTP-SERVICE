@@ -1,5 +1,5 @@
 /**
- * Auth-Email-Service: Hybrid Email-as-a-Service Gateway
+ * Gmail-SMTP-Service: Hybrid Email-as-a-Service Gateway
  * Entrypoint máy chủ chính tích hợp Graceful Shutdown & Dead-Letter Queue
  */
 
@@ -66,7 +66,7 @@ app.get('/api/v1/health', (req, res) => {
   res.json({
     status: 'UP',
     timestamp: new Date().toISOString(),
-    service: 'Auth-Email-Service (SOA Gateway)'
+    service: 'Gmail-SMTP-Service (SOA Gateway)'
   });
 });
 
