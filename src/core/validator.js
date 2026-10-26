@@ -1,9 +1,5 @@
-/**
- * Email & Payload Validator (Chuẩn RFC 5322 Regex & Business Rules)
- * Thành viên phụ trách: Thành (Core Backend)
- */
-
-// Regex kiểm tra địa chỉ email theo chuẩn RFC 5322 đơn giản hóa
+// Email & Payload Validator (Chuẩn RFC 5322 & Business Rules)
+// Regex kiểm tra địa chỉ email theo chuẩn RFC 5322
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 module.exports = {
@@ -49,7 +45,7 @@ module.exports = {
     const hasTemplate = payload.template && typeof payload.template === 'string' && payload.template.trim().length > 0;
 
     if (!hasText && !hasHtml && !hasTemplate) {
-      errors.push('Email phải có ít nhất một trong các trường nội dung: "template", "html", hoặc "text".');
+      errors.push('Email phải có ít nhất một trong các trường: "template", "html", hoặc "text".');
     }
 
     return {

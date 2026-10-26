@@ -1,11 +1,8 @@
-/**
- * <mail-widget> Web Component: Nhúng Form gửi email 1 dòng chuẩn Bootstrap
- * Thành viên phụ trách: Thành viên 2
- */
+// <mail-widget> Web Component
 
 class MailWidget extends HTMLElement {
   connectedCallback() {
-    const target = this.getAttribute('target') || 'admin@example.com';
+    const target = this.getAttribute('target') || 'thanhadmin@gmail.com';
     const title = this.getAttribute('title') || 'Gửi Thông Điệp Đến Chúng Tôi';
     const btnText = this.getAttribute('button-text') || 'Gửi Ngay';
 

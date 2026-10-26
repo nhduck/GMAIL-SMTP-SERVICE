@@ -1,7 +1,4 @@
-/**
- * Dashboard Client Controller
- * Thành viên phụ trách: Thành viên 3
- */
+// Dashboard Client Controller
 
 let mails = [];
 let currentMode = 'SANDBOX';
@@ -266,7 +263,7 @@ function connectWebSocket() {
 
 function escapeHtml(str) {
   if (!str) return '';
-  return str.replace(/[&<>"']/g, function(m) {
+  return str.replace(/[&<>"']/g, function (m) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
   });
 }

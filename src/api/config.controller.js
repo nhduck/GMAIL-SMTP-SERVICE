@@ -1,7 +1,4 @@
-/**
- * Config Controller: Quản lý chế độ (Sandbox / Live) và cài đặt kết nối
- * Thành viên phụ trách: Thành viên 1 & 3
- */
+// Config Controller: Quản lý chế độ (Sandbox / Live) và cài đặt kết nối
 
 const modeManager = require('../core/mode-manager');
 const smtpLive = require('../core/smtp-live');

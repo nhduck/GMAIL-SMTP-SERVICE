@@ -1,8 +1,5 @@
-/**
- * Advanced Queue Engine: Hàng đợi bất đồng bộ có Retry Exponential Backoff,
- * Dead-Letter Queue (DLQ), Điều phối luồng và cơ chế Graceful Drain
- * Thành viên phụ trách: Thành (Core Backend)
- */
+// Advanced Queue Engine: Hàng đợi bất đồng bộ có Retry Exponential Backoff,
+// Dead-Letter Queue (DLQ), Điều phối luồng và cơ chế Graceful Drain
 
 const { v4: uuidv4 } = require('uuid');
 
@@ -18,16 +15,9 @@ class AsyncEmailQueue {
     this.deadLetterQueue = [];  // Dead-Letter Queue (DLQ) lưu các job hỏng sau 3 lần retry
 
     // Metrics phục vụ báo cáo hiệu năng môn SOA
-    this.metrics = {
-      totalEnqueued: 0,
-      totalCompleted: 0,
-      totalFailed: 0,
-      totalRetried: 0,
-      totalSentToDlq: 0,
-      averageProcessTimeMs: 0
-    };
+    this.metrics = { totalEnqueued: 0, totalCompleted: 0, totalFailed: 0, totalRetried: 0, totalSentToDlq: 0, averageProcessTimeMs: 0 };
 
-    this.onJobEvent = null; // Callback phát WebSocket ra ngoài
+    this.onJobEvent = null; // Callback
   }
 
   setEventListener(listener) {
@@ -55,9 +45,7 @@ class AsyncEmailQueue {
     };
   }
 
-  /**
-   * Thêm task vào hàng đợi. Hàm này trả về ngay lập tức để đạt SLA < 45ms.
-   */
+  // Hàm này trả về ngay lập tức để đạt SLA < 45ms.
   enqueue(data, handler) {
     const job = {
       id: uuidv4(),
@@ -131,7 +119,7 @@ class AsyncEmailQueue {
           this.scheduleNext();
         }, backoffDelay);
       } else {
-        // Vượt quá số lần thử lại -> Chuyển vào Dead-Letter Queue (DLQ)
+        // Vượt quá số lần thử lại -> Chuyển vào Dead-Letter Queue
         job.status = 'DEAD_LETTER';
         job.completedAt = new Date().toISOString();
         job.movedToDlqAt = new Date().toISOString();
@@ -142,7 +130,7 @@ class AsyncEmailQueue {
         this.deadLetterQueue.unshift(job);
         if (this.deadLetterQueue.length > 100) this.deadLetterQueue.pop();
 
-        console.error(`☠️ [Dead-Letter Queue] Job ${job.id} đã thử ${this.maxRetries} lần thất bại. Đưa vào DLQ.`);
+        console.error(`[Dead-Letter Queue] Job ${job.id} đã thử ${this.maxRetries} lần thất bại. Đưa vào DLQ.`);
         this.emit('JOB_MOVED_TO_DLQ', job);
       }
     } finally {
@@ -162,7 +150,7 @@ class AsyncEmailQueue {
     }
   }
 
-  // --- CÁC HÀM QUẢN TRỊ DEAD-LETTER QUEUE (DLQ) ---
+  // Các hàm quản trị Dead-Letter Queue
   getDeadLetterQueue() {
     return this.deadLetterQueue.map(j => this.serializeJob(j));
   }
@@ -190,7 +178,7 @@ class AsyncEmailQueue {
     return count;
   }
 
-  // --- HỖ TRỢ GRACEFUL SHUTDOWN ---
+  // Hỗ trợ graceful shutdown
   async drainActiveWorkers(timeoutMs = 8000) {
     const start = Date.now();
     console.log(`[Queue Drain] Đang chờ ${this.activeWorkers} worker hoàn thành công việc...`);

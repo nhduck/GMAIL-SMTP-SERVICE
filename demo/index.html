@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Client App Demo | Tích Hợp Xác Thực & Quên Mật Khẩu (SOA)</title>
+  <title>App Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <style>
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -15,14 +17,17 @@
       margin: 0;
       padding: 40px 20px;
     }
+
     .container {
       max-width: 900px;
       margin: 0 auto;
     }
+
     .header-box {
       text-align: center;
       margin-bottom: 30px;
     }
+
     .badge {
       background: #dbeafe;
       color: #1d4ed8;
@@ -33,14 +38,24 @@
       display: inline-block;
       margin-bottom: 12px;
     }
-    h1 { margin: 0 0 10px 0; color: #0f172a; font-size: 1.8rem; }
-    p.desc { color: #64748b; font-size: 0.95rem; margin: 0; }
+
+    h1 {
+      margin: 0 0 10px 0;
+      color: #0f172a;
+      font-size: 1.8rem;
+    }
+
+    p.desc {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin: 0;
+    }
 
     .main-card {
       background: white;
       border-radius: 20px;
       padding: 30px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
       border: 1px solid #e2e8f0;
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -48,7 +63,9 @@
     }
 
     @media (max-width: 768px) {
-      .main-card { grid-template-columns: 1fr; }
+      .main-card {
+        grid-template-columns: 1fr;
+      }
     }
 
     .nav-auth-tabs {
@@ -58,6 +75,7 @@
       border-bottom: 1px solid #e2e8f0;
       padding-bottom: 12px;
     }
+
     .auth-tab-btn {
       background: transparent;
       border: none;
@@ -69,13 +87,24 @@
       cursor: pointer;
       transition: all 0.2s;
     }
+
     .auth-tab-btn.active {
       background: #eff6ff;
       color: #2563eb;
     }
 
-    .form-group { margin-bottom: 16px; }
-    label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85rem; color: #475569; }
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+
     input {
       width: 100%;
       padding: 12px 14px;
@@ -86,7 +115,11 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
 
     .btn-submit {
       width: 100%;
@@ -100,8 +133,15 @@
       cursor: pointer;
       transition: opacity 0.2s;
     }
-    .btn-submit:hover { opacity: 0.95; }
-    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-submit:hover {
+      opacity: 0.95;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
     .status-msg {
       margin-top: 14px;
@@ -110,8 +150,20 @@
       font-size: 0.9rem;
       display: none;
     }
-    .status-msg.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: block; }
-    .status-msg.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+
+    .status-msg.success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      display: block;
+    }
+
+    .status-msg.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      display: block;
+    }
 
     .code-preview-pane {
       background: #0f172a;
@@ -121,6 +173,7 @@
       display: flex;
       flex-direction: column;
     }
+
     .code-header {
       font-size: 0.8rem;
       text-transform: uppercase;
@@ -131,6 +184,7 @@
       justify-content: space-between;
       align-items: center;
     }
+
     pre {
       margin: 0;
       font-family: monospace;
@@ -140,6 +194,7 @@
       overflow-x: auto;
       flex: 1;
     }
+
     .tip-box {
       background: #1e293b;
       border-left: 3px solid #38bdf8;
@@ -151,12 +206,14 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header-box">
       <span class="badge">Sample Client Application (Mô Phỏng Ứng Dụng Môn Học)</span>
       <h1>Ứng Dụng Mẫu: Đăng Ký & Đặt Lại Mật Khẩu</h1>
-      <p class="desc">Minh họa cách một dự án sinh viên khác tích hợp Email Gateway chỉ bằng vài dòng JavaScript gọi API.</p>
+      <p class="desc">Minh họa cách một dự án sinh viên khác tích hợp Email Gateway chỉ bằng vài dòng JavaScript gọi
+        API.</p>
     </div>
 
     <div class="main-card">
@@ -219,8 +276,10 @@ await fetch("http://localhost:3000/api/v1/verify-email", {
         <div class="tip-box">
           💡 <strong>Lưu ý kiến trúc SOA:</strong>
           <ul style="margin: 6px 0 0 0; padding-left: 18px;">
-            <li>Trong thực tế, các API này được gọi <strong>server-to-server</strong> từ backend của ứng dụng, không gọi trực tiếp từ trình duyệt của người dùng cuối.</li>
-            <li>Mã OTP chỉ hiển thị trực tiếp ở đây khi chạy chế độ <strong>Sandbox (Dev)</strong> để tiện kiểm thử. Ở chế độ Live thật, OTP chỉ nằm trong hòm thư người nhận và không bao giờ trả về qua API response.</li>
+            <li>Trong thực tế, các API này được gọi <strong>server-to-server</strong> từ backend của ứng dụng, không gọi
+              trực tiếp từ trình duyệt của người dùng cuối.</li>
+            <li>Mã OTP chỉ hiển thị trực tiếp ở đây khi chạy chế độ <strong>Sandbox (Dev)</strong> để tiện kiểm thử. Ở
+              chế độ Live thật, OTP chỉ nằm trong hòm thư người nhận và không bao giờ trả về qua API response.</li>
           </ul>
         </div>
       </div>
@@ -343,4 +402,5 @@ await fetch("http://localhost:3000/api/v1/password-reset", {
     });
   </script>
 </body>
+
 </html>

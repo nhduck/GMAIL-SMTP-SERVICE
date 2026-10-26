@@ -1,7 +1,4 @@
-/**
- * Sandbox Store: Bộ nhớ RAM lưu trữ email ảo trong chế độ Dev Sandbox
- * Thành viên phụ trách: Thành viên 1 & Thành viên 3
- */
+// Sandbox Store: Bộ nhớ RAM lưu trữ email ảo trong chế độ Dev Sandbox
 
 const { v4: uuidv4 } = require('uuid');
 

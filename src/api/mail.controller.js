@@ -1,8 +1,5 @@
-/**
- * Mail Controller: Tiếp nhận gửi mail, kiểm tra validation RFC 5322,
- * hỗ trợ 3 use case cốt lõi: Account Verification, Password Reset, HTML Email Templates
- * Thành viên phụ trách: Thành (Core Backend)
- */
+// Mail Controller: Tiếp nhận gửi mail, kiểm tra validation RFC 5322,
+// hỗ trợ 3 nghiệp vụ cốt lõi: Account Verification, Password Reset, HTML Email Templates
 
 const config = require('../config');
 const modeManager = require('../core/mode-manager');
@@ -59,7 +56,7 @@ async function dispatchEmail({ to, subject, text, html, extra = {} }, req, res, 
   const latencyMs = Math.round((diff[0] * 1000 + diff[1] / 1e6) * 100) / 100;
   res.setHeader('X-Response-Time-Ms', latencyMs);
 
-  // Bảo mật: Ở chế độ LIVE_GMAIL, TUYỆT ĐỐI KHÔNG trả về mã OTP trong HTTP Response
+  // Bảo mật: Ở chế độ LIVE_GMAIL, không trả về mã OTP trong HTTP Response
   const liveExtra = { ...extra };
   delete liveExtra.otp;
 
@@ -96,7 +93,7 @@ module.exports = {
       });
     }
 
-    // Ở chế độ Sandbox: nếu không có verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số để tiện demo
+    // Ở chế độ Sandbox: nếu không có verifyUrl và không có otp, tự sinh mã OTP ngẫu nhiên 6 chữ số (cái này để nhóm tiên demo thôi ạ)
     if (!verifyUrl && !otp) {
       otp = Math.floor(100000 + Math.random() * 900000).toString();
     }
