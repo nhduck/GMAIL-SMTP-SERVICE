@@ -10,11 +10,11 @@
 
 ## PHÂN CHIA CÔNG VIỆC NHÓM
 
-| Thành viên | Trách nhiệm chính | Module phụ trách | Nhánh Git |
+| Thành viên | Trách nhiệm chính | Module phụ trách |
 | :--- | :--- | :--- | :--- |
-| **524H0032 - Trương Minh Thành** (Nhóm trưởng) | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js` |
-| **524H0032 - Ngô Huỳnh Đức** (Thành viên) | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK, `Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
-| **524H0008 - Lâm Tấn Đạt** (Thành viên) | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
+| **524H0032 - Trương Minh Thành** | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js` |
+| **524H0032 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK |`Auth-Email-Service.postman_collection.json`, `src/core/imap-listener.js` |
+| **524H0008 - Lâm Tấn Đạt** | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
 
 ---
 
@@ -27,7 +27,7 @@
    cd Auth-Email-Service
    ```
 2. Click đúp chuột vào file **`start.bat`**.  
-   *Hệ thống sẽ tự động cài gói thư viện và mở trình duyệt tại [http://localhost:3000](http://localhost:3000).*
+   *Hệ thống sẽ tự động cài gói thư viện giúp bạn và mở trình duyệt tại [http://localhost:3000](http://localhost:3000).*
 
 ### Cách 2: Chạy bằng dòng lệnh (Terminal)
 ```bash
@@ -39,7 +39,7 @@ npm start
 
 ---
 
-## HƯỚNG DẪN CẤU HÌNH GỬI THẬT QUA LIVE GMAIL
+## HƯỚNG DẪN CẤU HÌNH GỬI QUA LIVE GMAIL
 
 Khi cần gửi email thật ra ngoài hòm thư, các bạn chỉ cần lấy **Mật khẩu ứng dụng (App Password 16 ký tự)** của Google:
 
@@ -132,11 +132,11 @@ Auth-Email-Service/
 │   │   └── mail-agent.min.js            # (Mở rộng) SDK nhúng nhanh vào client
 │   ├── config.js                        # Cấu hình tập trung (TTL 5 phút, API Key, Quota)
 │   └── server.js                        # Điểm khởi chạy hệ thống (Express + WebSocket + Shutdown)
-├── test/                                # Bộ kịch bản kiểm thử tự động
+├── test/                                # Bộ kịch bản automation test
 │   ├── queue-benchmark.test.js          # Benchmark 5 bài test cốt lõi (SLA, DLQ, Circuit Breaker)
 │   └── stress-test.js                   # Stress test 100 requests đồng thời đo độ trễ
 ├── .env.example                         # Mẫu khai báo biến môi trường (GMAIL, TTL, API_KEY)
-├── Auth-Email-Service.postman_collection.json # Bộ sưu tập Postman Collection kiểm thử API
+├── Auth-Email-Service.postman_collection.json # Bộ Postman Collection kiểm thử API
 ├── package.json                         # Quản lý thư viện và script thực thi
 ├── start.bat                            # Script 1-click khởi chạy tức thì trên Windows
 └── README.md                            # Hướng dẫn sử dụng và tài liệu kỹ thuật
@@ -153,9 +153,9 @@ Auth-Email-Service/
 
 ---
 
-## TÍNH NĂNG MỞ RỘNG (TẮT MẶC ĐỊNH)
-*Lưu ý: Các tính năng này nằm ngoài phạm vi chính của đề tài (được tắt mặc định để đảm bảo cài đặt nhẹ và nhanh nhất cho sinh viên, bản đầy đủ đã được lưu trữ tại Git tag `full-version`):*
+## TÍNH NĂNG MỞ RỘNG (NHÓM MÌNH TẮT MẶC ĐỊNH)
+*Lưu ý: Các tính năng này nằm ngoài phạm vi chính của đề tài (được tắt mặc định để đảm bảo cài đặt nhẹ và nhanh nhất cho các bạn, bản đầy đủ đã được lưu trữ tại Git tag `full-version`):*
 - **IMAP IDLE Listener (Tắt mặc định):** Lắng nghe thư đến thời gian thực qua cổng 993 và bắn Webhook JSON về các ứng dụng khác (kích hoạt bằng biến `ENABLE_INBOUND=true` trong `.env`).
 - **Web Component `<mail-widget>` & SDK:** Nhúng form liên hệ giao diện Glassmorphism chỉ bằng 1 thẻ HTML (`<script src="http://localhost:3000/embed.js"></script>`).
 
-> **Học phần:** Kiến Trúc Hướng Dịch Vụ (SOA) – Khoa CNTT, Đại Học Tôn Đức Thắng (TDTU) 
+> **Học phần:** Kiến Trúc Hướng Dịch Vụ (SOA) – Khoa CNTT, Đại Học Tôn Đức Thắng (TDTU)
