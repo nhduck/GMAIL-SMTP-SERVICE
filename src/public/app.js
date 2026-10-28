@@ -60,8 +60,15 @@ async function loadInitialConfig() {
     const json = await res.json();
     if (json.success && json.data) {
       updateModeUI(json.data.mode || 'SANDBOX');
-      if (json.data.rawGmailUser && document.getElementById('cfgUser')) {
-        document.getElementById('cfgUser').value = json.data.rawGmailUser;
+      if (json.data.rawGmailUser) {
+        if (document.getElementById('cfgUser')) {
+          document.getElementById('cfgUser').value = json.data.rawGmailUser;
+        }
+        // Tự động điền email người nhận mặc định ở tab Kiểm Thử Gửi Mail bằng chính Gmail đã cấu hình
+        const testToInput = document.getElementById('testTo');
+        if (testToInput && (!testToInput.value || testToInput.value === 'student@tdtu.edu.vn')) {
+          testToInput.value = json.data.rawGmailUser;
+        }
       }
       if (json.data.isConfigured && document.getElementById('cfgAppPassword')) {
         document.getElementById('cfgAppPassword').placeholder = '✓ Đã nạp sẵn App Password (để trống nếu giữ nguyên)';
@@ -280,7 +287,9 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
   const html = document.getElementById('testHtml').value;
   const statusBox = document.getElementById('testStatus');
 
-  statusBox.innerText = 'Đang gửi...';
+  statusBox.innerText = currentMode === 'LIVE_GMAIL'
+    ? '⏳ Đang kết nối smtp.gmail.com:587 và gửi thư (mất khoảng 3-5 giây)...'
+    : 'Đang gửi...';
   statusBox.style.color = '#38bdf8';
 
   let payload = { to };
@@ -313,7 +322,9 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
     const result = await res.json();
     if (res.ok) {
       const extraInfo = result.otp ? ` (Mã OTP: ${result.otp})` : (payload.otp ? ` (Mã OTP đã gửi: ${payload.otp})` : '');
-      statusBox.innerText = `✓ ${result.message}${extraInfo}`;
+      statusBox.innerText = currentMode === 'LIVE_GMAIL'
+        ? `⏳ Đã xếp hàng gửi tới ${to}${extraInfo} — đang chờ Gmail SMTP xác nhận...`
+        : `✓ ${result.message}${extraInfo}`;
       statusBox.style.color = '#10b981';
       loadMails();
     } else {
@@ -352,8 +363,11 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
     });
     const result = await res.json();
     if (res.ok) {
-      statusBox.innerText = '✓ ' + result.message;
+      statusBox.innerText = '✓ ' + result.message + ' (Hãy sang tab "Kiểm Thử Gửi Mail" hoặc dùng App cổng 4000 để bắn email thật)';
       statusBox.style.color = '#10b981';
+      if (user && document.getElementById('testTo')) {
+        document.getElementById('testTo').value = user.trim();
+      }
       loadInitialConfig();
       loadMails();
     } else {
@@ -376,6 +390,13 @@ function connectWebSocket() {
       const data = JSON.parse(event.data);
       if (data.type === 'NEW_MAIL' || data.type === 'INBOUND_MAIL' || data.type === 'JOB_COMPLETED') {
         loadMails();
+      }
+      if (data.type === 'JOB_COMPLETED' && data.job && currentMode === 'LIVE_GMAIL') {
+        const statusBox = document.getElementById('testStatus');
+        if (statusBox && statusBox.innerText.includes('⏳')) {
+          statusBox.innerText = `✓ Đã gửi thành công vào hộp thư Gmail thật (${data.job.to})!`;
+          statusBox.style.color = '#10b981';
+        }
       }
       if (data.type === 'JOB_MOVED_TO_DLQ' && data.job) {
         const statusBox = document.getElementById('testStatus');

@@ -60,8 +60,6 @@ Khi cần gửi email thật ra ngoài hòm thư, các bạn chỉ cần lấy *
      GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
      ```
 
----
-
 ### Lộ trình B: Tự lập trình Email Service từ con số 0 (From Scratch - 10 phút)
 
 Nếu các bạn muốn tự viết một dịch vụ gửi mail từ đầu để hiểu rõ bản chất kỹ thuật bên dưới `src/core/smtp-live.js`, `src/core/templates.js` và `demo-app/store.js`, hãy làm theo 4 bước sau:

@@ -54,24 +54,20 @@ class DemoStore {
   // USER MANAGEMENT
   createUser({ email, name, password }) {
     const normalizedEmail = email.toLowerCase().trim();
-    if (this.users.has(normalizedEmail)) {
-      const existing = this.users.get(normalizedEmail);
-      if (existing.isVerified) {
-        throw new Error('Email này đã được đăng ký và xác thực.');
-      }
-      // Nếu chưa xác thực thì cho phép cập nhật lại thông tin
-    }
+    const existing = this.users.get(normalizedEmail);
 
+    // Trong môi trường Demo Seminar, cho phép đăng ký lại cùng email khi chuyển từ Sandbox sang Live Gmail
+    // để người thuyết trình có thể nhận lại OTP mới qua Gmail thật mà không cần khởi động lại server
     const { hash, salt } = hashPassword(password);
     const user = {
-      id: 'usr_' + crypto.randomBytes(6).toString('hex'),
+      id: existing ? existing.id : ('usr_' + crypto.randomBytes(6).toString('hex')),
       email: normalizedEmail,
       name: name.trim(),
       passwordHash: hash,
       salt,
       isVerified: false,
-      role: 'EMPLOYEE',
-      createdAt: new Date().toISOString()
+      role: existing ? existing.role : 'EMPLOYEE',
+      createdAt: existing ? existing.createdAt : new Date().toISOString()
     };
     this.users.set(normalizedEmail, user);
     return user;
@@ -261,7 +257,26 @@ class DemoStore {
   // PASSWORD RESET TOKEN (5 phút TTL, tự động hủy các token reset cũ của cùng email)
   createResetToken(email) {
     const normalized = email.toLowerCase().trim();
-    const user = this.users.get(normalized);
+    let user = this.users.get(normalized);
+
+    // Trong môi trường Demo Seminar, nếu người dùng bấm "Quên mật khẩu" cho một email Gmail thật
+    // mà chưa kịp đăng ký ở cổng 4000, tự động khởi tạo tài khoản demo để gửi được email Reset Password ngay
+    if (!user && process.env.STRICT_RESET_USER !== 'true') {
+      const defaultName = normalized.split('@')[0] || 'Nhân viên Demo';
+      const { hash, salt } = hashPassword('Demo@123456');
+      user = {
+        id: 'usr_' + crypto.randomBytes(6).toString('hex'),
+        email: normalized,
+        name: defaultName,
+        passwordHash: hash,
+        salt,
+        isVerified: true,
+        role: 'EMPLOYEE',
+        createdAt: new Date().toISOString()
+      };
+      this.users.set(normalized, user);
+    }
+
     if (!user) {
       return null;
     }
@@ -312,6 +327,7 @@ class DemoStore {
     const { hash, salt } = hashPassword(newPassword);
     user.passwordHash = hash;
     user.salt = salt;
+    user.isVerified = true;
     check.tokenRecord.used = true;
 
     // Thu hồi toàn bộ phiên đăng nhập cũ sau khi đổi mật khẩu
