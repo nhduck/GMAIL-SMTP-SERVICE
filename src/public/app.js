@@ -2,6 +2,8 @@
 
 let mails = [];
 let currentMode = 'SANDBOX';
+let selectedMailId = null;
+let previewViewport = 'desktop'; // 'desktop' | 'mobile'
 
 // Hỗ trợ gắn kèm header X-API-Key khi máy chủ bật bảo mật API_KEY
 function getStoredApiKey() {
@@ -115,36 +117,88 @@ async function loadMails() {
 function renderMailList() {
   mailCount.innerText = mails.length;
   if (mails.length === 0) {
+    selectedMailId = null;
     mailList.innerHTML = '<div class="empty-state">Hòm thư trống. Hãy gửi thử 1 email!</div>';
     mailViewer.innerHTML = '<div class="empty-preview">Chọn một email bên trái để xem nội dung chi tiết</div>';
     return;
   }
 
   mailList.innerHTML = mails.map(m => `
-    <div class="mail-item" onclick="selectMail('${m.id}')">
+    <div class="mail-item ${m.id === selectedMailId ? 'selected' : ''}" onclick="selectMail('${m.id}')">
       <div class="mail-item-title">${escapeHtml(m.subject)}</div>
       <div class="mail-item-to">Tới: ${escapeHtml(m.to)}</div>
       <div class="mail-item-time">${new Date(m.receivedAt).toLocaleTimeString()}</div>
     </div>
   `).join('');
+
+  // Tự động hiển thị bức thư đầu tiên nếu chưa chọn bức thư nào
+  if (!selectedMailId || !mails.some(m => m.id === selectedMailId)) {
+    window.selectMail(mails[0].id, false);
+  }
 }
 
-window.selectMail = function (id) {
+window.setPreviewViewport = function (mode) {
+  previewViewport = mode === 'mobile' ? 'mobile' : 'desktop';
+  const iframe = document.getElementById('mailPreviewIframe');
+  const btnDesktop = document.getElementById('btnViewportDesktop');
+  const btnMobile = document.getElementById('btnViewportMobile');
+  if (iframe) {
+    iframe.classList.toggle('mobile-frame', previewViewport === 'mobile');
+  }
+  if (btnDesktop && btnMobile) {
+    btnDesktop.classList.toggle('active', previewViewport === 'desktop');
+    btnMobile.classList.toggle('active', previewViewport === 'mobile');
+  }
+};
+
+window.selectMail = function (id, shouldScrollOnMobile = true) {
   const mail = mails.find(m => m.id === id);
   if (!mail) return;
+  selectedMailId = id;
+
+  // Cập nhật highlight trong danh sách
+  document.querySelectorAll('.mail-item').forEach(el => {
+    el.classList.toggle('selected', el.getAttribute('onclick') === `selectMail('${id}')`);
+  });
 
   mailViewer.innerHTML = `
-    <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
-      <h2 style="margin: 0 0 8px 0; color: #0f172a;">${escapeHtml(mail.subject)}</h2>
-      <div style="font-size: 0.9rem; color: #64748b;">
-        <div><b>Người nhận:</b> ${escapeHtml(mail.to)}</div>
-        <div><b>Thời gian:</b> ${new Date(mail.receivedAt).toLocaleString()}</div>
+    <div class="preview-toolbar">
+      <div>
+        <h2 style="margin: 0 0 6px 0; color: #0f172a; font-size: 1.15rem;">${escapeHtml(mail.subject)}</h2>
+        <div style="font-size: 0.85rem; color: #64748b;">
+          <div><b>Người nhận:</b> ${escapeHtml(mail.to)}</div>
+          <div><b>Thời gian:</b> ${new Date(mail.receivedAt).toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="viewport-switcher" title="Chuyển đổi khung nhìn để kiểm tra HTML Email Responsive">
+        <button type="button" id="btnViewportDesktop" class="viewport-btn ${previewViewport === 'desktop' ? 'active' : ''}" onclick="setPreviewViewport('desktop')">🖥 Desktop</button>
+        <button type="button" id="btnViewportMobile" class="viewport-btn ${previewViewport === 'mobile' ? 'active' : ''}" onclick="setPreviewViewport('mobile')">📱 Mobile (375px)</button>
       </div>
     </div>
-    <div class="mail-body-content">
-      ${mail.html || `<pre style="color: #334155;">${escapeHtml(mail.text)}</pre>`}
+    <div class="mail-preview-stage">
+      ${mail.html
+        ? `<iframe id="mailPreviewIframe" class="mail-iframe ${previewViewport === 'mobile' ? 'mobile-frame' : ''}" title="Email HTML Preview"></iframe>`
+        : `<pre style="color: #334155; width: 100%;">${escapeHtml(mail.text)}</pre>`
+      }
     </div>
   `;
+
+  const iframe = document.getElementById('mailPreviewIframe');
+  if (iframe && mail.html) {
+    iframe.srcdoc = mail.html;
+    iframe.onload = () => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (doc && doc.body) {
+          iframe.style.height = Math.max(480, doc.body.scrollHeight + 24) + 'px';
+        }
+      } catch (_) {}
+    };
+  }
+
+  if (shouldScrollOnMobile && window.innerWidth <= 860) {
+    mailViewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 };
 
 // Clear Mails
