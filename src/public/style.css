@@ -30,6 +30,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 24px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--card-border);
@@ -41,6 +43,7 @@ body {
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 12px;
   padding: 8px;
+  flex-shrink: 0;
 }
 h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
 .subtitle { margin: 4px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
@@ -65,6 +68,7 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 .mode-btn.active {
   background: var(--primary);
@@ -77,6 +81,7 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 .tab-btn {
   background: var(--card-bg);
@@ -135,27 +140,31 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 .inbox-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 360px 1fr;
   gap: 20px;
-  height: 600px;
+  min-height: 620px;
 }
 .mail-list {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--card-border);
   border-radius: 14px;
   overflow-y: auto;
+  max-height: 680px;
   padding: 10px;
 }
 .mail-viewer {
   background: rgba(255, 255, 255, 0.96);
   color: #0f172a;
   border-radius: 14px;
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
+  min-width: 0;
 }
 .mail-item {
   background: var(--card-bg);
@@ -167,18 +176,76 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
   transition: background 0.2s;
 }
 .mail-item:hover, .mail-item.selected {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.22);
   border-color: var(--primary);
 }
-.mail-item-title { font-weight: 600; margin-bottom: 4px; }
-.mail-item-to { font-size: 0.85rem; color: var(--text-muted); }
+.mail-item-title { font-weight: 600; margin-bottom: 4px; word-break: break-word; }
+.mail-item-to { font-size: 0.85rem; color: var(--text-muted); word-break: break-all; }
 .mail-item-time { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+
+/* Preview Toolbar (Desktop vs Mobile 375px switcher) */
+.preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.viewport-switcher {
+  display: inline-flex;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.viewport-btn {
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.viewport-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+.mail-preview-stage {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.mail-iframe {
+  width: 100%;
+  min-height: 520px;
+  border: none;
+  border-radius: 10px;
+  background: #f8fafc;
+  transition: width 0.25s ease, box-shadow 0.25s ease;
+}
+.mail-iframe.mobile-frame {
+  width: 375px;
+  max-width: 100%;
+  border: 8px solid #1e293b;
+  border-radius: 24px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
 
 .empty-state, .empty-preview {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
+  min-height: 220px;
   color: var(--text-muted);
   text-align: center;
 }
@@ -232,3 +299,41 @@ pre {
   font-family: monospace;
 }
 .status-box { margin-top: 14px; font-size: 0.9rem; font-weight: 500; }
+
+/* Responsive cho màn hình Tablet & Điện thoại (F12 Mobile View) */
+@media (max-width: 860px) {
+  body {
+    padding: 14px;
+  }
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .mode-switch-wrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .nav-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .tab-btn {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+  .inbox-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .mail-list {
+    max-height: 240px;
+  }
+  .mail-viewer {
+    padding: 14px;
+  }
+  .card {
+    padding: 16px;
+  }
+}
