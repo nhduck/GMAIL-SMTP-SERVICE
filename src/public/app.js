@@ -63,6 +63,9 @@ async function loadInitialConfig() {
       if (json.data.rawGmailUser && document.getElementById('cfgUser')) {
         document.getElementById('cfgUser').value = json.data.rawGmailUser;
       }
+      if (json.data.isConfigured && document.getElementById('cfgAppPassword')) {
+        document.getElementById('cfgAppPassword').placeholder = '✓ Đã nạp sẵn App Password (để trống nếu giữ nguyên)';
+      }
       if (json.data.webhookUrl && document.getElementById('cfgWebhookUrl')) {
         document.getElementById('cfgWebhookUrl').value = json.data.webhookUrl;
       }
@@ -127,7 +130,7 @@ function renderMailList() {
     <div class="mail-item ${m.id === selectedMailId ? 'selected' : ''}" onclick="selectMail('${m.id}')">
       <div class="mail-item-title">${escapeHtml(m.subject)}</div>
       <div class="mail-item-to">Tới: ${escapeHtml(m.to)}</div>
-      <div class="mail-item-time">${new Date(m.receivedAt).toLocaleTimeString()}</div>
+      <div class="mail-item-time">${new Date(m.receivedAt).toLocaleTimeString()} • ${m.mode === 'LIVE_GMAIL' ? '📤 Live Gmail' : '🧪 Sandbox'}</div>
     </div>
   `).join('');
 
@@ -167,7 +170,7 @@ window.selectMail = function (id, shouldScrollOnMobile = true) {
         <h2 style="margin: 0 0 6px 0; color: #0f172a; font-size: 1.15rem;">${escapeHtml(mail.subject)}</h2>
         <div style="font-size: 0.85rem; color: #64748b;">
           <div><b>Người nhận:</b> ${escapeHtml(mail.to)}</div>
-          <div><b>Thời gian:</b> ${new Date(mail.receivedAt).toLocaleString()}</div>
+          <div><b>Thời gian:</b> ${new Date(mail.receivedAt).toLocaleString()} (${mail.mode === 'LIVE_GMAIL' ? 'Đã gửi qua Live Gmail' : 'Hộp thư ảo Sandbox'})</div>
         </div>
       </div>
       <div class="viewport-switcher" title="Chuyển đổi khung nhìn để kiểm tra HTML Email Responsive">
@@ -285,7 +288,11 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
   if (endpoint === '/api/v1/verify-email') {
     payload.name = name;
     const otpInput = document.getElementById('testOtp');
-    const otpVal = otpInput ? otpInput.value.trim() : '';
+    let otpVal = otpInput ? otpInput.value.trim() : '';
+    // Khi bấm gửi thử trên Dashboard ở chế độ Live Gmail mà để trống cả OTP lẫn verifyUrl, tự tạo 6 số mẫu để tiện kiểm thử
+    if (!otpVal && !verifyUrl && currentMode === 'LIVE_GMAIL') {
+      otpVal = String(Math.floor(100000 + Math.random() * 900000));
+    }
     if (otpVal) payload.otp = otpVal;
     if (verifyUrl) payload.verifyUrl = verifyUrl;
   } else if (endpoint === '/api/v1/password-reset') {
@@ -305,7 +312,7 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
     });
     const result = await res.json();
     if (res.ok) {
-      const extraInfo = result.otp ? ` (Mã OTP sinh ngẫu nhiên: ${result.otp})` : '';
+      const extraInfo = result.otp ? ` (Mã OTP: ${result.otp})` : (payload.otp ? ` (Mã OTP đã gửi: ${payload.otp})` : '');
       statusBox.innerText = `✓ ${result.message}${extraInfo}`;
       statusBox.style.color = '#10b981';
       loadMails();
@@ -347,6 +354,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
     if (res.ok) {
       statusBox.innerText = '✓ ' + result.message;
       statusBox.style.color = '#10b981';
+      loadInitialConfig();
       loadMails();
     } else {
       statusBox.innerText = '✕ Lỗi: ' + (result.error || 'Không thể lưu cấu hình');
@@ -366,8 +374,15 @@ function connectWebSocket() {
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      if (data.type === 'NEW_MAIL' || data.type === 'INBOUND_MAIL') {
+      if (data.type === 'NEW_MAIL' || data.type === 'INBOUND_MAIL' || data.type === 'JOB_COMPLETED') {
         loadMails();
+      }
+      if (data.type === 'JOB_MOVED_TO_DLQ' && data.job) {
+        const statusBox = document.getElementById('testStatus');
+        if (statusBox) {
+          statusBox.innerText = `✕ Gửi Gmail thất bại (đã chuyển vào DLQ): ${data.job.error}`;
+          statusBox.style.color = '#ef4444';
+        }
       }
       if (data.type === 'MODE_CHANGED') {
         updateModeUI(data.mode);

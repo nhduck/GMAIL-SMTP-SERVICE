@@ -302,7 +302,7 @@ async function runE2ETest() {
     const liveNoOtpRes = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: 'student@tdtu.edu.vn', name: 'Nguyễn Văn A' })
+      body: JSON.stringify({ to: 'student@tdtu.edu.vn', name: 'Nguyễn Văn A', strictContract: true })
     });
     console.log(`Chặn thiếu otp/verifyUrl ở chế độ LIVE_GMAIL (400): ${liveNoOtpRes.status === 400 ? '✅ ĐÚNG CONTRACT SLIDE' : '❌ LỖI'}`);
 

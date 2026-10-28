@@ -134,24 +134,24 @@
       <div class="card card-form">
         <h2>Cấu Hình Tài Khoản Gmail (Cho Chế Độ Live)</h2>
         <p class="desc">Chỉ cần 1 App Password duy nhất của Google để gửi qua SMTP:587 và nhận qua IMAP:993.</p>
-        <form id="configForm">
+        <form id="configForm" autocomplete="off">
           <div class="form-group">
             <label>Tài khoản Gmail:</label>
-            <input type="email" id="cfgUser" placeholder="your_email@gmail.com" />
+            <input type="email" id="cfgUser" autocomplete="off" placeholder="your_email@gmail.com" />
           </div>
           <div class="form-group">
             <label>Mật khẩu ứng dụng (App Password 16 ký tự):</label>
-            <input type="password" id="cfgAppPassword" placeholder="xxxx xxxx xxxx xxxx" />
+            <input type="password" id="cfgAppPassword" autocomplete="new-password" placeholder="xxxx xxxx xxxx xxxx" />
             <small class="helper-text"> Cách lấy: Vào Tài khoản Google &gt; Bảo mật &gt; Xác minh 2 bước &gt; Mật khẩu
               ứng dụng.</small>
           </div>
           <div class="form-group">
             <label>Webhook URL (Tùy chọn - Nhận thông báo khi có mail mới):</label>
-            <input type="url" id="cfgWebhookUrl" placeholder="https://my-backend.com/api/email-received" />
+            <input type="url" id="cfgWebhookUrl" autocomplete="off" placeholder="https://my-backend.com/api/email-received" />
           </div>
           <div class="form-group">
             <label>X-API-Key (Tùy chọn - chỉ cần điền nếu máy chủ có bật biến môi trường API_KEY):</label>
-            <input type="password" id="cfgApiKey" placeholder="Để trống nếu chạy local mặc định" />
+            <input type="password" id="cfgApiKey" autocomplete="new-password" placeholder="Để trống nếu chạy local mặc định" />
           </div>
           <button type="submit" class="btn btn-primary">Lưu Cấu Hình</button>
           <div id="configStatus" class="status-box"></div>

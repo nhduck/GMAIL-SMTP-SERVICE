@@ -14,6 +14,7 @@ const templates = require('../core/templates');
 // Helper nội bộ xử lý phân phối thư (cả Sandbox và Live đều đi qua Async Queue để đo đúng SLA & theo dõi trạng thái)
 async function dispatchEmail({ to, subject, text, html, fromName, extra = {} }, req, res, startTime) {
   const mode = modeManager.getMode();
+  const displaySender = fromName || config.MAIL_FROM_NAME;
 
   // 1. Chế độ SANDBOX (Dev Mode) - vẫn đi qua Queue để thống nhất kiến trúc và thể hiện metrics trên Dashboard
   if (mode === 'SANDBOX') {
@@ -22,7 +23,7 @@ async function dispatchEmail({ to, subject, text, html, fromName, extra = {} }, 
       { to, subject, text, html },
       async () => {
         savedMail = sandboxStore.addMail({
-          from: `${fromName || config.MAIL_FROM_NAME} <sandbox@demo.local>`,
+          from: `${displaySender} <sandbox@demo.local>`,
           to,
           subject,
           text,
@@ -61,7 +62,20 @@ async function dispatchEmail({ to, subject, text, html, fromName, extra = {} }, 
   const enqueueResult = queue.enqueue(
     { to, subject, text, html },
     async () => {
-      await smtpLive.sendLiveMail({ to, subject, text, html, fromName });
+      await smtpLive.sendLiveMail({ to, subject, text, html, fromName: displaySender });
+      // Lưu bản sao vào danh sách thư trên Dashboard để tiện theo dõi cả khi bật Live Gmail
+      const { user } = modeManager.getCredentials();
+      const savedLive = sandboxStore.addMail({
+        from: `${displaySender} <${user || 'live@gmail.com'}>`,
+        to,
+        subject,
+        text,
+        html
+      });
+      savedLive.mode = 'LIVE_GMAIL';
+      if (req.app.get('broadcastWs')) {
+        req.app.get('broadcastWs')({ type: 'NEW_MAIL', data: savedLive });
+      }
     }
   );
 
@@ -117,11 +131,11 @@ module.exports = {
     const mode = modeManager.getMode();
     let otp = req.body.otp ? String(req.body.otp).trim() : '';
 
-    // Ràng buộc Contract theo chế độ (đúng như Slide 9 & Slide 12):
-    // - Ở LIVE_GMAIL: Dịch vụ KHÔNG lưu trạng thái, nên ứng dụng nghiệp vụ bắt buộc phải tự sinh & truyền otp hoặc verifyUrl.
-    // - Ở SANDBOX: Cho phép bỏ trống để Gateway tự sinh ngẫu nhiên 6 số bằng CSPRNG phục vụ demo nhanh.
+    // Nếu ứng dụng gọi truyền cờ strictContract=true ở LIVE_GMAIL thì bắt buộc có otp/verifyUrl;
+    // Mặc định nếu bỏ trống sẽ tự sinh mã OTP 6 chữ số an toàn bằng CSPRNG (crypto.randomInt)
+    // để kiểm thử trên Dashboard / Postman ở cả Sandbox lẫn Live Gmail luôn gửi thư mượt mà.
     if (!verifyUrl && !otp) {
-      if (mode === 'LIVE_GMAIL') {
+      if (mode === 'LIVE_GMAIL' && req.body.strictContract === true) {
         return res.status(400).json({
           success: false,
           error: 'Ở chế độ LIVE_GMAIL, ứng dụng bắt buộc phải truyền "otp" hoặc "verifyUrl" (Email Service không lưu trữ OTP).'

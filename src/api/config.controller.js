@@ -38,6 +38,18 @@ module.exports = {
       return res.status(400).json({ success: false, error: 'Tài khoản Gmail không đúng định dạng email.' });
     }
 
+    // Kiểm tra định dạng Google App Password (16 ký tự chữ cái sau khi bỏ khoảng trắng)
+    // Tránh trường hợp trình duyệt tự động điền (autofill) mật khẩu đăng nhập thường làm hỏng App Password trong .env
+    if (appPassword && String(appPassword).trim().length > 0) {
+      const cleanedPass = String(appPassword).replace(/\s+/g, '');
+      if (!/^[a-zA-Z]{16}$/.test(cleanedPass)) {
+        return res.status(400).json({
+          success: false,
+          error: 'App Password không hợp lệ! Mật khẩu ứng dụng Google phải gồm đúng 16 chữ cái (dạng xxxx xxxx xxxx xxxx), không phải mật khẩu đăng nhập Gmail thường.'
+        });
+      }
+    }
+
     modeManager.updateCredentials({ user, appPassword, webhookUrl });
     smtpLive.resetTransporter();
 
