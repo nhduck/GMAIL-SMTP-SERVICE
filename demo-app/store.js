@@ -6,6 +6,8 @@
 
 const crypto = require('crypto');
 
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // Phiên đăng nhập có hiệu lực 24 giờ
+
 // Băm mật khẩu bằng crypto.scrypt an toàn
 function hashPassword(password, salt = null) {
   const generatedSalt = salt || crypto.randomBytes(16).toString('hex');
@@ -15,7 +17,10 @@ function hashPassword(password, salt = null) {
 
 function verifyPassword(password, hash, salt) {
   const result = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(result, 'hex'));
+  const hashBuf = Buffer.from(hash, 'hex');
+  const resultBuf = Buffer.from(result, 'hex');
+  if (hashBuf.length !== resultBuf.length) return false;
+  return crypto.timingSafeEqual(hashBuf, resultBuf);
 }
 
 class DemoStore {
@@ -24,7 +29,7 @@ class DemoStore {
     this.otps = new Map();          // email -> { otp, expiresAt, attempts }
     this.leaves = new Map();        // leaveId -> { id, employeeEmail, employeeName, startDate, endDate, days, reason, status, decisionToken, createdAt, decidedAt }
     this.tokens = new Map();        // tokenString -> { type, data, expiresAt, used }
-    this.sessions = new Map();      // sessionId -> { email, name, role, createdAt }
+    this.sessions = new Map();      // sessionId -> { email, name, role, createdAt, expiresAt }
 
     // Khởi tạo tài khoản quản lý mẫu
     const managerEmail = (process.env.MANAGER_EMAIL || 'manager@demo.local').toLowerCase().trim();
@@ -39,6 +44,11 @@ class DemoStore {
       role: 'MANAGER',
       createdAt: new Date().toISOString()
     });
+  }
+
+  // So sánh mật khẩu bằng thời gian hằng số (chống timing attack)
+  verifyPassword(password, hash, salt) {
+    return verifyPassword(password, hash, salt);
   }
 
   // USER MANAGEMENT
@@ -72,10 +82,10 @@ class DemoStore {
     return this.users.get(email.toLowerCase().trim()) || null;
   }
 
-  // OTP VERIFICATION (5 phút, tối đa 5 lần thử sai)
+  // OTP VERIFICATION (5 phút, tối đa 5 lần thử sai, sinh bằng CSPRNG crypto.randomInt)
   createOtp(email) {
     const normalizedEmail = email.toLowerCase().trim();
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     this.otps.set(normalizedEmail, {
@@ -106,6 +116,10 @@ class DemoStore {
 
     if (record.otp !== String(inputOtp).trim()) {
       record.attempts += 1;
+      if (record.attempts >= 5) {
+        this.otps.delete(normalizedEmail);
+        return { success: false, error: 'Bạn đã nhập sai OTP quá 5 lần. Mã đã bị hủy để đảm bảo an toàn.' };
+      }
       return {
         success: false,
         error: `Mã OTP không chính xác. Còn lại ${5 - record.attempts} lần thử.`
@@ -121,21 +135,38 @@ class DemoStore {
     return { success: true, user };
   }
 
-  // SESSIONS
+  // SESSIONS (có thời hạn 24 giờ và hỗ trợ thu hồi khi đổi mật khẩu)
   createSession(user) {
     const sessionId = 'ses_' + crypto.randomBytes(24).toString('hex');
+    const now = Date.now();
     this.sessions.set(sessionId, {
       email: user.email,
       name: user.name,
       role: user.role,
-      createdAt: Date.now()
+      createdAt: now,
+      expiresAt: now + SESSION_TTL_MS
     });
     return sessionId;
   }
 
   getSession(sessionId) {
     if (!sessionId) return null;
-    return this.sessions.get(sessionId) || null;
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    if (Date.now() > session.expiresAt) {
+      this.sessions.delete(sessionId);
+      return null;
+    }
+    return session;
+  }
+
+  revokeUserSessions(email) {
+    const normalized = email.toLowerCase().trim();
+    for (const [sid, sess] of this.sessions.entries()) {
+      if (sess.email === normalized) {
+        this.sessions.delete(sid);
+      }
+    }
   }
 
   // LEAVE MANAGEMENT
@@ -227,12 +258,19 @@ class DemoStore {
     return { valid: true, leave, status: leave.status };
   }
 
-  // PASSWORD RESET TOKEN (5 phút TTL)
+  // PASSWORD RESET TOKEN (5 phút TTL, tự động hủy các token reset cũ của cùng email)
   createResetToken(email) {
     const normalized = email.toLowerCase().trim();
     const user = this.users.get(normalized);
     if (!user) {
       return null;
+    }
+
+    // Vô hiệu hóa mọi token đặt lại mật khẩu cũ chưa dùng của tài khoản này
+    for (const [, rec] of this.tokens.entries()) {
+      if (rec.type === 'PASSWORD_RESET' && rec.data && rec.data.email === normalized && !rec.used) {
+        rec.used = true;
+      }
     }
 
     const resetToken = crypto.randomBytes(24).toString('hex');
@@ -252,7 +290,7 @@ class DemoStore {
       return { valid: false, error: 'Mã đặt lại mật khẩu không hợp lệ.' };
     }
     if (record.used) {
-      return { valid: false, error: 'Liên kết đặt lại mật khẩu này đã được sử dụng.' };
+      return { valid: false, error: 'Liên kết đặt lại mật khẩu này đã được sử dụng hoặc đã bị thay thế bởi yêu cầu mới hơn.' };
     }
     if (Date.now() > record.expiresAt) {
       return { valid: false, error: 'Liên kết đặt lại mật khẩu đã hết hạn (quá 5 phút).' };
@@ -275,6 +313,9 @@ class DemoStore {
     user.passwordHash = hash;
     user.salt = salt;
     check.tokenRecord.used = true;
+
+    // Thu hồi toàn bộ phiên đăng nhập cũ sau khi đổi mật khẩu
+    this.revokeUserSessions(check.email);
 
     return { valid: true, message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' };
   }

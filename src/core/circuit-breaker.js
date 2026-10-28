@@ -11,6 +11,7 @@ class CircuitBreaker {
     this.lastFailureTime = null;
     this.lastError = null;
     this.trippedCount = 0;
+    this.halfOpenInFlight = false; // Chỉ cho phép đúng 1 request thăm dò khi đang ở HALF_OPEN
   }
 
   canExecute() {
@@ -21,15 +22,20 @@ class CircuitBreaker {
     if (this.state === 'OPEN') {
       const now = Date.now();
       if (now - this.lastFailureTime > this.resetTimeout) {
-        console.log('[Circuit Breaker] Hết thời gian chờ, chuyển sang trạng thái HALF_OPEN để thăm dò.');
+        console.log('[Circuit Breaker] Hết thời gian chờ, chuyển sang trạng thái HALF_OPEN để thăm dò (1 request).');
         this.state = 'HALF_OPEN';
+        this.halfOpenInFlight = true;
         return true;
       }
       return false;
     }
 
-    // Trạng thái HALF_OPEN: cho phép 1 request đi qua để thử nghiệm
-    return true;
+    // Trạng thái HALF_OPEN: chỉ cho phép 1 request duy nhất đi qua để thử nghiệm
+    if (!this.halfOpenInFlight) {
+      this.halfOpenInFlight = true;
+      return true;
+    }
+    return false;
   }
 
   recordSuccess() {
@@ -39,19 +45,21 @@ class CircuitBreaker {
     this.consecutiveFailures = 0;
     this.state = 'CLOSED';
     this.lastError = null;
+    this.halfOpenInFlight = false;
   }
 
   recordFailure(error) {
     this.consecutiveFailures += 1;
     this.lastFailureTime = Date.now();
     this.lastError = error ? (error.message || String(error)) : 'Unknown error';
+    this.halfOpenInFlight = false;
 
     console.warn(`[Circuit Breaker] Gặp lỗi (${this.consecutiveFailures}/${this.failureThreshold}): ${this.lastError}`);
 
     if (this.consecutiveFailures >= this.failureThreshold || this.state === 'HALF_OPEN') {
       this.state = 'OPEN';
       this.trippedCount += 1;
-      console.error(`🚨 [Circuit Breaker TRIPPED] Ngắt mạch khẩn cấp! Ngừng gửi tiếp để bảo vệ tài khoản Gmail.`);
+      console.error('🚨 [Circuit Breaker TRIPPED] Ngắt mạch khẩn cấp! Ngừng gửi tiếp để bảo vệ tài khoản Gmail.');
     }
   }
 
@@ -70,6 +78,7 @@ class CircuitBreaker {
     this.state = 'CLOSED';
     this.consecutiveFailures = 0;
     this.lastError = null;
+    this.halfOpenInFlight = false;
     console.log('[Circuit Breaker] Đã thiết lập lại trạng thái thủ công về CLOSED.');
   }
 }

@@ -7,6 +7,13 @@ const state = {
   webhookUrl: process.env.WEBHOOK_URL || ''
 };
 
+// Che địa chỉ email: abcdef@gmail.com -> abc***@gmail.com
+function maskEmail(email) {
+  if (!email) return null;
+  const [local, domain] = String(email).split('@');
+  return `${local.slice(0, 3)}***@${domain || '***'}`;
+}
+
 module.exports = {
   getMode: () => state.mode,
   setMode: (newMode) => {
@@ -16,16 +23,22 @@ module.exports = {
     }
     return false;
   },
-  getConfig: () => ({
-    mode: state.mode,
-    gmailUser: state.gmailUser ? `${state.gmailUser.slice(0, 3)}***@gmail.com` : null,
-    rawGmailUser: state.gmailUser || null,
-    isConfigured: Boolean(state.gmailUser && state.gmailAppPassword),
-    webhookUrl: state.webhookUrl
-  }),
+  // includePrivate = true chỉ dùng cho request quản trị (localhost hoặc có API Key)
+  getConfig: (includePrivate = false) => {
+    const cfg = {
+      mode: state.mode,
+      gmailUser: maskEmail(state.gmailUser),
+      isConfigured: Boolean(state.gmailUser && state.gmailAppPassword)
+    };
+    if (includePrivate) {
+      cfg.rawGmailUser = state.gmailUser || null;
+      cfg.webhookUrl = state.webhookUrl;
+    }
+    return cfg;
+  },
   updateCredentials: ({ user, appPassword, webhookUrl }) => {
-    if (user) state.gmailUser = user;
-    if (appPassword) state.gmailAppPassword = appPassword;
+    if (user) state.gmailUser = String(user).trim();
+    if (appPassword) state.gmailAppPassword = String(appPassword);
     if (webhookUrl !== undefined) state.webhookUrl = webhookUrl;
   },
   getCredentials: () => ({

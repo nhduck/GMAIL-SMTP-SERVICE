@@ -2,6 +2,7 @@
 // tích hợp Circuit Breaker bảo vệ tài khoản Gmail
 
 const nodemailer = require('nodemailer');
+const config = require('../config');
 const modeManager = require('./mode-manager');
 const circuitBreaker = require('./circuit-breaker');
 
@@ -41,8 +42,15 @@ function getTransporter() {
   return transporter;
 }
 
+// Làm sạch tên hiển thị người gửi (chống header injection qua dấu ngoặc kép hoặc xuống dòng)
+function sanitizeSenderName(name) {
+  return String(name || config.MAIL_FROM_NAME || 'TMT Company')
+    .replace(/["\r\n<>]/g, '')
+    .trim() || 'TMT Company';
+}
+
 module.exports = {
-  sendLiveMail: async ({ to, subject, text, html }) => {
+  sendLiveMail: async ({ to, subject, text, html, fromName }) => {
     // 1. Kiểm tra trạng thái Circuit Breaker trước khi gửi
     if (!circuitBreaker.canExecute()) {
       throw new Error('Circuit Breaker đang ở trạng thái OPEN. Tạm ngừng gửi để bảo vệ tài khoản Gmail!');
@@ -51,9 +59,10 @@ module.exports = {
     try {
       const transport = getTransporter();
       const { user } = modeManager.getCredentials();
+      const displayName = sanitizeSenderName(fromName);
 
       const info = await transport.sendMail({
-        from: `"TMT Company" <${user}>`,
+        from: `"${displayName}" <${user}>`,
         to,
         subject,
         text,

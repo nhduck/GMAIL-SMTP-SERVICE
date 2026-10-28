@@ -14,32 +14,20 @@ const mailController = require('./api/mail.controller');
 const configController = require('./api/config.controller');
 const queue = require('./core/queue');
 const smtpLive = require('./core/smtp-live');
+const { requireApiKey, requireAdmin } = require('./core/security');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const config = require('./config');
-
 // Cấu hình Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Tùy chọn bảo mật: Middleware kiểm tra API Key (chỉ kích hoạt nếu biến môi trường API_KEY được thiết lập)
-app.use('/api/v1', (req, res, next) => {
-  if (!config.API_KEY || req.path === '/health') {
-    return next();
-  }
-  const providedKey = req.headers['x-api-key'] || req.query.api_key;
-  if (!providedKey || providedKey !== config.API_KEY) {
-    return res.status(401).json({
-      success: false,
-      error: 'Truy cập bị từ chối: Header "X-API-Key" không hợp lệ hoặc bị thiếu.'
-    });
-  }
-  next();
-});
+// Tùy chọn bảo mật: Middleware kiểm tra API Key qua header X-API-Key
+// (chỉ kích hoạt nếu biến môi trường API_KEY được thiết lập; so sánh thời gian hằng số, không nhận qua query string)
+app.use('/api/v1', requireApiKey);
 
 // Phục vụ thư mục static (Dashboard & SDK) với no-cache để tránh dính cache trình duyệt khi demo
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -83,19 +71,21 @@ app.get('/api/v1/templates', mailController.getTemplates);
 
 // Mail Endpoints
 app.post('/api/v1/send', mailController.sendMail);
-app.get('/api/v1/mails', mailController.getMails);
-app.delete('/api/v1/mails', mailController.clearMails);
 app.get('/api/v1/queue/stats', mailController.getQueueStats);
 
-// Dead-Letter Queue (DLQ) Endpoints
-app.get('/api/v1/queue/dlq', mailController.getDlq);
-app.post('/api/v1/queue/dlq/:id/retry', mailController.retryDlqJob);
-app.delete('/api/v1/queue/dlq', mailController.clearDlq);
+// Hộp thư ảo chứa OTP / link reset của người dùng -> chỉ quản trị viên (localhost hoặc có API Key) được xem
+app.get('/api/v1/mails', requireAdmin, mailController.getMails);
+app.delete('/api/v1/mails', requireAdmin, mailController.clearMails);
 
-// Config Endpoints
+// Dead-Letter Queue (DLQ) Endpoints (quản trị)
+app.get('/api/v1/queue/dlq', requireAdmin, mailController.getDlq);
+app.post('/api/v1/queue/dlq/:id/retry', requireAdmin, mailController.retryDlqJob);
+app.delete('/api/v1/queue/dlq', requireAdmin, mailController.clearDlq);
+
+// Config Endpoints: GET công khai (email đã được che), thay đổi cấu hình chỉ dành cho quản trị
 app.get('/api/v1/config', configController.getConfig);
-app.post('/api/v1/config/mode', configController.setMode);
-app.post('/api/v1/config/credentials', configController.updateCredentials);
+app.post('/api/v1/config/mode', requireAdmin, configController.setMode);
+app.post('/api/v1/config/credentials', requireAdmin, configController.updateCredentials);
 
 // WebSocket Connection Handler
 wss.on('connection', (ws) => {
