@@ -62,84 +62,152 @@ Khi cần gửi email thật ra ngoài hòm thư, các bạn chỉ cần lấy *
 
 ---
 
-## CÁCH TÍCH HỢP VÀO DỰ ÁN KHÁC (API CONTRACT)
+### Lộ trình B: Tự lập trình Email Service từ con số 0 (From Scratch - 10 phút)
 
-Dự án bất kỳ của các bạn (Node.js, Python, Java, PHP, C#) chỉ cần gọi 1 trong 3 endpoint sau:
+Nếu các bạn muốn tự viết một dịch vụ gửi mail từ đầu để hiểu rõ bản chất kỹ thuật bên dưới `src/core/smtp-live.js`, `src/core/templates.js` và `demo-app/store.js`, hãy làm theo 4 bước sau:
 
-### 1. Xác thực tài khoản (Account Verification)
-> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ bắt buộc phải tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số bằng CSPRNG phục vụ demo nhanh.
-```javascript
-// Gửi mã OTP xác thực tài khoản
-await fetch("http://localhost:3000/api/v1/verify-email", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    to: "student@tdtu.edu.vn",
-    name: "Nguyễn Văn A",
-    otp: "123456",         // Bắt buộc khi chạy LIVE_GMAIL; ở SANDBOX có thể bỏ trống để tự sinh
-    expiresInMinutes: 5    // Tùy chọn: thời hạn hiệu lực hiển thị trong email (mặc định 5 phút)
-  })
-});
-```
-
-### 2. Đặt lại mật khẩu (Password Reset)
-```javascript
-// Gửi email đặt lại mật khẩu kèm link có thời hạn an toàn 5 phút (mặc định)
-await fetch("http://localhost:3000/api/v1/password-reset", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    to: "student@tdtu.edu.vn",
-    name: "Nguyễn Văn A",
-    resetUrl: "https://myapp.com/reset-password?token=sec_token_998811",
-    expiresInMinutes: 5 // Tùy chọn: số nguyên từ 1 đến 1440 phút (mặc định 5 phút)
-  })
-});
-```
-
-### 3. Gửi HTML Email theo Template
+#### Bước 1: Khởi tạo dự án Node.js mới & cài đặt thư viện
 ```bash
-curl -X POST http://localhost:3000/api/v1/send \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "student@tdtu.edu.vn",
-    "template": "custom-html",
-    "variables": {
-      "title": "Chào mừng bạn đến với hệ thống!",
-      "content": "<p>Tài khoản của bạn đã được kích hoạt thành công.</p>"
-    }
-  }'
+mkdir my-email-service && cd my-email-service
+npm init -y
+npm install express nodemailer dotenv
 ```
 
-### 4. Gửi Email Hành Động Tương Tác (Action Email - Nút Duyệt / Từ Chối)
+#### Bước 2: Tạo file `.env` khai báo thông tin kết nối Gmail SMTP
+Tạo file `.env` trong thư mục `my-email-service`:
+```env
+PORT=3000
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+RESET_TTL_MINUTES=5
+```
+
+#### Bước 3: Viết toàn bộ logic cốt lõi trong 1 file `index.js`
+Tạo file `index.js` (minh họa đầy đủ: **Nodemailer Connection Pool cổng 587 STARTTLS**, **sinh OTP an toàn bằng `crypto.randomInt`**, **Token đặt lại mật khẩu dùng 1 lần có TTL 5 phút**, và **HTML Email Responsive**):
+
 ```javascript
-// Gửi email chứa bảng thông tin chi tiết và 2 nút hành động (Duyệt / Từ chối)
-await fetch("http://localhost:3000/api/v1/send", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    to: "manager@demo.local",
-    subject: "Đơn Xin Nghỉ Phép Cần Phê Duyệt",
-    template: "action-email",
-    variables: {
-      title: "Đơn Xin Nghỉ Phép Cần Phê Duyệt",
-      greeting: "Chào Quản lý,",
-      intro: "Nhân viên Nguyễn Văn A vừa nộp một đơn xin nghỉ phép mới:",
-      badge: { text: "CHỜ PHÊ DUYỆT", tone: "warning" },
-      details: [
-        { label: "Nhân viên", value: "Nguyễn Văn A (a@tdtu.edu.vn)" },
-        { label: "Thời gian nghỉ", value: "Từ 05/11 đến 07/11 (3 ngày)" },
-        { label: "Lý do", value: "Nghỉ phép cá nhân" }
-      ],
-      primaryButton: { text: "Duyệt Đơn", url: "http://localhost:4000/decision/token123?action=approve" },
-      secondaryButton: { text: "Từ Chối", url: "http://localhost:4000/decision/token123?action=reject" }
-    }
-  })
+require('dotenv').config();
+const crypto = require('crypto');
+const express = require('express');
+const nodemailer = require('nodemailer');
+
+const app = express();
+app.use(express.json());
+
+// 1. Khởi tạo SMTP Transporter kết nối Gmail qua cổng 587 (STARTTLS)
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // false = nâng cấp bảo mật qua STARTTLS trên cổng 587
+  pool: true,    // Tái sử dụng kết nối TCP/TLS để tăng tốc độ gửi
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '')
+  }
 });
+
+// Bộ nhớ tạm lưu OTP và Reset Token (Thực tế lưu trong Redis / Database)
+const otpStore = new Map();   // email -> { otp, expiresAt, attempts }
+const resetStore = new Map(); // token -> { email, expiresAt, used }
+
+// Hàm chống XSS khi chèn biến vào HTML Email
+const escapeHtml = (s = '') =>
+  String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 2. API 1: Xác thực tài khoản qua OTP 6 số (Account Verification)
+app.post('/api/verify-email', async (req, res) => {
+  const { to, name = 'Bạn' } = req.body;
+  // Sinh OTP 6 chữ số bằng CSPRNG (an toàn mật mã, không dùng Math.random)
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  otpStore.set(to, { otp, expiresAt: Date.now() + 5 * 60 * 1000, attempts: 0 });
+
+  const html = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:24px;font-family:sans-serif;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e2e8f0;">
+          <tr><td>
+            <h2 style="color:#1e40af;margin-top:0;">Xin chào ${escapeHtml(name)},</h2>
+            <p>Mã xác thực tài khoản (OTP) của bạn là:</p>
+            <div style="font-size:30px;font-weight:bold;letter-spacing:6px;text-align:center;padding:16px;background:#f1f5f9;border-radius:8px;">
+              ${otp}
+            </div>
+            <p style="color:#64748b;font-size:13px;">Mã có hiệu lực trong vòng <b>5 phút</b>.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>`;
+
+  await transporter.sendMail({
+    from: `"SOA Lab Service" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: 'Mã xác thực tài khoản (OTP)',
+    text: `Mã OTP của bạn là: ${otp} (hiệu lực 5 phút).`,
+    html
+  });
+
+  res.status(202).json({ success: true, message: 'Đã gửi OTP xác thực (TTL 5 phút).' });
+});
+
+// 3. API 2: Đặt lại mật khẩu với liên kết có thời hạn 5 phút (Password Reset)
+app.post('/api/password-reset', async (req, res) => {
+  const { to, name = 'Bạn' } = req.body;
+  const ttlMinutes = Number(process.env.RESET_TTL_MINUTES) || 5;
+
+  // Sinh token ngẫu nhiên 48 ký tự hex (24 bytes) dùng 1 lần
+  const token = crypto.randomBytes(24).toString('hex');
+  resetStore.set(token, {
+    email: to,
+    expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+    used: false
+  });
+
+  const resetUrl = `http://localhost:3000/api/confirm-reset?token=${token}`;
+  const html = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:24px;font-family:sans-serif;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #fecaca;">
+          <tr><td>
+            <h2 style="color:#dc2626;margin-top:0;">Yêu cầu đặt lại mật khẩu</h2>
+            <p>Xin chào ${escapeHtml(name)}, nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
+            <p style="text-align:center;margin:24px 0;">
+              <a href="${resetUrl}" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;">
+                Đặt Lại Mật Khẩu
+              </a>
+            </p>
+            <p style="color:#991b1b;font-size:13px;">⚠️ Liên kết chỉ có hiệu lực trong <b>${ttlMinutes} phút</b> và chỉ dùng 1 lần.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>`;
+
+  await transporter.sendMail({
+    from: `"SOA Lab Service" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: 'Khôi phục mật khẩu (Hiệu lực 5 phút)',
+    text: `Đặt lại mật khẩu tại (hết hạn sau ${ttlMinutes} phút): ${resetUrl}`,
+    html
+  });
+
+  res.status(202).json({ success: true, message: `Đã gửi link đặt lại mật khẩu (TTL ${ttlMinutes} phút).` });
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Lab Email Service đang chạy tại http://localhost:3000');
+});
+```
+
+#### Bước 4: Chạy thử và kiểm tra hòm thư
+```bash
+node index.js
+```
+Gửi thử bằng `curl` hoặc Postman:
+```bash
+curl -X POST http://localhost:3000/api/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{"to": "your_receiver_email@gmail.com", "name": "Sinh Viên TDTU"}'
 ```
 
 ---
-
 ## CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```text
