@@ -5,22 +5,26 @@
  */
 
 const SERVICE_URL = process.env.SERVICE_URL || 'http://localhost:3000';
-const SERVICE_API_KEY = process.env.SERVICE_API_KEY || null;
+
+function buildHeaders(extra = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...extra
+  };
+  const apiKey = process.env.SERVICE_API_KEY || process.env.API_KEY;
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+  return headers;
+}
 
 async function requestEmailService(endpoint, payload) {
   const url = `${SERVICE_URL}${endpoint}`;
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  if (SERVICE_API_KEY) {
-    headers['X-API-Key'] = SERVICE_API_KEY;
-  }
 
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers,
+      headers: buildHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -38,13 +42,29 @@ async function requestEmailService(endpoint, payload) {
   }
 }
 
+async function getGatewayConfig() {
+  try {
+    const res = await fetch(`${SERVICE_URL}/api/v1/config`, {
+      headers: buildHeaders()
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 module.exports = {
-  // Gửi mã OTP xác thực tài khoản
+  getGatewayConfig,
+
+  // Gửi mã OTP xác thực tài khoản (hiệu lực 5 phút đồng bộ với store.js)
   async sendVerificationEmail({ to, name, otp }) {
     return await requestEmailService('/api/v1/verify-email', {
       to,
       name,
       otp,
+      expiresInMinutes: 5,
       appName: 'TMT Company'
     });
   },

@@ -16,6 +16,34 @@ const app = express();
 const PORT = process.env.DEMO_PORT || 4000;
 const DEMO_APP_URL = process.env.DEMO_APP_URL || `http://localhost:${PORT}`;
 
+// Bộ giới hạn tần suất (Rate Limiter) đơn giản chống spam email (email bombing) trên /api/register và /api/forgot
+const rateBuckets = new Map(); // key -> { count, resetAt }
+function createRateLimiter({ windowMs = 60 * 1000, max = 10, label = 'yêu cầu' } = {}) {
+  return (req, res, next) => {
+    const ip = (req.socket && req.socket.remoteAddress) || 'local';
+    const emailKey = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : '';
+    const key = `${req.path}:${ip}:${emailKey}`;
+    const now = Date.now();
+    const record = rateBuckets.get(key);
+
+    if (!record || now > record.resetAt) {
+      rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    if (record.count >= max) {
+      const waitSec = Math.ceil((record.resetAt - now) / 1000);
+      return res.status(429).json({
+        success: false,
+        error: `Bạn đã gửi quá nhiều ${label} liên tiếp. Vui lòng thử lại sau ${waitSec} giây.`
+      });
+    }
+
+    record.count += 1;
+    next();
+  };
+}
+
 async function resolveManagerEmail() {
   const envManager = (process.env.MANAGER_EMAIL || '').toLowerCase().trim();
   if (envManager && envManager !== 'manager@demo.local') {
@@ -23,22 +51,16 @@ async function resolveManagerEmail() {
   }
 
   // Nếu chưa cấu hình MANAGER_EMAIL hoặc để mặc định demo.local, kiểm tra Gateway xem có đang ở LIVE_GMAIL không
-  try {
-    const serviceUrl = process.env.SERVICE_URL || 'http://localhost:3000';
-    const res = await fetch(`${serviceUrl}/api/v1/config`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.data && json.data.mode === 'LIVE_GMAIL' && json.data.rawGmailUser) {
-        return json.data.rawGmailUser;
-      }
-    }
-  } catch (_) {}
+  const cfg = await mailer.getGatewayConfig();
+  if (cfg && cfg.mode === 'LIVE_GMAIL' && cfg.rawGmailUser) {
+    return cfg.rawGmailUser;
+  }
 
   return envManager || 'manager@demo.local';
 }
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Phục vụ giao diện tĩnh
@@ -69,8 +91,8 @@ app.get('/api/info', async (req, res) => {
   });
 });
 
-// ĐĂNG KÝ TÀI KHOẢN
-app.post('/api/register', async (req, res) => {
+// ĐĂNG KÝ TÀI KHOẢN (có rate limit chống spam OTP)
+app.post('/api/register', createRateLimiter({ windowMs: 60 * 1000, max: 10, label: 'yêu cầu đăng ký' }), async (req, res) => {
   try {
     const { email, name, password } = req.body;
     if (!email || !name || !password) {
@@ -98,8 +120,10 @@ app.post('/api/register', async (req, res) => {
       });
     }
 
-    // Ở môi trường Sandbox hoặc local, có thể trả kèm sandboxOtp để tiện chạy test tự động or demo nhanh
-    const isSandbox = (process.env.MODE || 'SANDBOX') !== 'LIVE_GMAIL';
+    // Bảo mật: Chỉ trả kèm sandboxOtp khi Gateway thực sự đang ở chế độ SANDBOX
+    // (không dựa vào process.env.MODE của demo-app vì người dùng có thể đã chuyển Gateway sang LIVE_GMAIL trên Dashboard)
+    const gatewayMode = mailRes.data && mailRes.data.mode;
+    const isSandbox = gatewayMode === 'SANDBOX';
 
     res.json({
       success: true,
@@ -157,11 +181,8 @@ app.post('/api/login', (req, res) => {
     });
   }
 
-  const { verifyPassword } = require('./store');
-  // So sánh hash
-  const crypto = require('crypto');
-  const resultHash = crypto.scryptSync(password, user.salt, 64).toString('hex');
-  if (resultHash !== user.passwordHash) {
+  // So sánh hash bằng crypto.timingSafeEqual thông qua store.verifyPassword
+  if (!store.verifyPassword(password, user.passwordHash, user.salt)) {
     return res.status(400).json({ success: false, error: 'Email hoặc mật khẩu không chính xác.' });
   }
 
@@ -330,8 +351,8 @@ app.post('/api/decision', async (req, res) => {
   });
 });
 
-// QUÊN MẬT KHẨU
-app.post('/api/forgot', async (req, res) => {
+// QUÊN MẬT KHẨU (có rate limit chống spam email đặt lại mật khẩu)
+app.post('/api/forgot', createRateLimiter({ windowMs: 60 * 1000, max: 5, label: 'yêu cầu đặt lại mật khẩu' }), async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ success: false, error: 'Vui lòng cung cấp email của bạn.' });

@@ -5,11 +5,12 @@ services:
       dockerfile: Dockerfile
     container_name: tmt-soa-system
     ports:
-      - "3000:3000"
-      - "4000:4000"
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:4000:4000"
     environment:
       - PORT=3000
       - DEMO_PORT=4000
       - MODE=SANDBOX
+      - ALLOW_REMOTE_ADMIN=true
       - NODE_ENV=production
     restart: unless-stopped

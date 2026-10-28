@@ -12,7 +12,7 @@
 
 | Thành viên | Trách nhiệm chính | Module phụ trách |
 | :--- | :--- | :--- |
-| **524H0032 - Trương Minh Thành** | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js` |
+| **524H0032 - Trương Minh Thành** | Kiến trúc Backend, API Gateway, Hàng đợi Async Queue, Circuit Breaker, Template Engine | `src/server.js`, `src/api/mail.controller.js`, `src/core/templates.js`, `src/core/queue.js`, `src/core/smtp-live.js`, `src/core/security.js` |
 | **524H0010 - Ngô Huỳnh Đức** | Tích hợp dịch vụ, Hướng dẫn thực hành, Postman Collection, Mô-đun mở rộng IMAP & SDK | `Gmail-SMTP-Service.postman_collection.json`, `src/core/imap-listener.js` |
 | **524H0008 - Lâm Tấn Đạt** | Dashboard UI, Hộp thư ảo, Ứng dụng mẫu Demo Auth (`demo/index.html`), Slide thuyết trình | `src/public/index.html`, `src/public/style.css`, `src/public/app.js`, `demo/index.html` |
 
@@ -28,7 +28,7 @@ Khởi chạy đồng thời cả hai dịch vụ độc lập (**Cổng 3000** 
   ```
 
 Sau khi khởi chạy, truy cập:
-* **🏢 Portal Nhân viên (Cổng 4000):** [http://localhost:4000](http://localhost:4000) — Đăng ký tài khoản nhận OTP, đăng nhập, nộp đơn xin nghỉ phép, quên mật khẩu (TTL 5 phút).
+* **🏢 Portal Nhân viên (Cổng 4000):** [http://localhost:4000](http://localhost:4000) — Đăng ký tài khoản nhận OTP (TTL 5 phút), đăng nhập, nộp đơn xin nghỉ phép, quên mật khẩu (TTL 5 phút).
 * **📬 Hộp thư ảo Sandbox (Cổng 3000):** [http://localhost:3000](http://localhost:3000) — Xem email OTP, email Quản lý duyệt đơn và email kết quả trả về.
 
 ### 2: Chạy Riêng Dịch Vụ Email Gateway (Cổng 3000)
@@ -38,8 +38,8 @@ Sau khi khởi chạy, truy cập:
 
 ### 3: Chạy Kiểm Thử Tự Động
 ```bash
-npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép
-npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker
+npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép & bảo mật E2E
+npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker, Template XSS/URL
 ```
 
 ---
@@ -67,7 +67,7 @@ Khi cần gửi email thật ra ngoài hòm thư, các bạn chỉ cần lấy *
 Dự án bất kỳ của các bạn (Node.js, Python, Java, PHP, C#) chỉ cần gọi 1 trong 3 endpoint sau:
 
 ### 1. Xác thực tài khoản (Account Verification)
-> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số phục vụ kiểm thử nhanh chóng.
+> **Lưu ý:** Ở chế độ **Live Gmail**, ứng dụng nghiệp vụ bắt buộc phải tự sinh OTP (để lưu DB kiểm tra sau này) rồi truyền vào trường `otp` (hoặc truyền `verifyUrl`). Ở chế độ **Sandbox**, có thể bỏ trống để Gateway tự sinh ngẫu nhiên 6 số bằng CSPRNG phục vụ demo nhanh.
 ```javascript
 // Gửi mã OTP xác thực tài khoản
 await fetch("http://localhost:3000/api/v1/verify-email", {
@@ -76,7 +76,8 @@ await fetch("http://localhost:3000/api/v1/verify-email", {
   body: JSON.stringify({
     to: "student@tdtu.edu.vn",
     name: "Nguyễn Văn A",
-    otp: "123456" // Ứng dụng tự sinh OTP (Sandbox có thể bỏ trống để tự sinh)
+    otp: "123456",         // Bắt buộc khi chạy LIVE_GMAIL; ở SANDBOX có thể bỏ trống để tự sinh
+    expiresInMinutes: 5    // Tùy chọn: thời hạn hiệu lực hiển thị trong email (mặc định 5 phút)
   })
 });
 ```
@@ -142,15 +143,15 @@ await fetch("http://localhost:3000/api/v1/send", {
 ## CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```text
-Auth-Email-Service/
+GmailSMTP/
 ├── demo-app/                            # Ứng dụng xin nghỉ phép nghiệp vụ (TMT Company - Cổng 4000)
 │   ├── public/                          # Giao diện web portal
 │   │   ├── index.html                   # Portal nhân viên (Đăng ký OTP, Tạo đơn, Quên mật khẩu)
 │   │   ├── decision.html                # Cổng xác nhận phê duyệt an toàn của Quản lý
 │   │   └── style.css                    # CSS giao diện
 │   ├── mailer.js                        # Client gọi Email Service Gateway qua chuẩn REST API
-│   ├── server.js                        # Máy chủ nghiệp vụ Express (Cổng 4000)
-│   └── store.js                         # In-memory store (Người dùng, OTP, Đơn nghỉ, Token 1 lần)
+│   ├── server.js                        # Máy chủ nghiệp vụ Express (Cổng 4000, có Rate Limiter)
+│   └── store.js                         # In-memory store (Người dùng, OTP CSPRNG, Đơn nghỉ, Token 1 lần)
 ├── demo/                                # Form HTML Demo Auth trực tiếp từ trình duyệt (bản 6 fetch)
 │   └── index.html                       # Demo Auth Client (bản 6 fetch)
 ├── scripts/                             # Kịch bản điều khiển hệ thống
@@ -164,6 +165,7 @@ Auth-Email-Service/
 │   │   ├── mode-manager.js              # Quản lý trạng thái chuyển đổi Sandbox / Live Gmail
 │   │   ├── queue.js                     # Hàng đợi phi khóa (Non-blocking), Retry & DLQ
 │   │   ├── sandbox-store.js             # Hộp thư ảo lưu trữ email trên RAM ở Sandbox
+│   │   ├── security.js                  # Bảo mật API Key (timing-safe) & bảo vệ API quản trị
 │   │   ├── smtp-live.js                 # Pool kết nối SMTP gửi thư thật qua Gmail (cổng 587)
 │   │   ├── templates.js                 # Template Engine render HTML Responsive (OTP, Reset 5m, Action)
 │   │   ├── validator.js                 # Kiểm tra tính hợp lệ của email và dữ liệu đầu vào
@@ -175,7 +177,7 @@ Auth-Email-Service/
 │   │   ├── app.js                       # Logic tương tác Dashboard & WebSocket thời gian thực
 │   │   ├── embed.js                     # (Mở rộng) Web Component <mail-widget>
 │   │   └── mail-agent.min.js            # (Mở rộng) SDK nhúng nhanh vào client
-│   ├── config.js                        # Cấu hình tập trung (TTL 5 phút, API Key, Quota)
+│   ├── config.js                        # Cấu hình tập trung (TTL 5 phút, API Key, Sender Name)
 │   └── server.js                        # Điểm khởi chạy hệ thống (Express + WebSocket + Shutdown)
 ├── test/                                # Bộ kịch bản automation test
 │   ├── demo-e2e.test.js                 # Test toàn luồng nghiệp vụ tự động (Sandbox E2E)
@@ -183,7 +185,7 @@ Auth-Email-Service/
 │   └── stress-test.js                   # Stress test 100 requests đồng thời đo độ trễ
 ├── .env.example                         # Mẫu khai báo biến môi trường (GMAIL, TTL, API_KEY)
 ├── .dockerignore                        # Danh sách loại trừ khi đóng gói Docker Image
-├── Auth-Email-Service.postman_collection.json # Bộ Postman Collection kiểm thử API
+├── Gmail-SMTP-Service.postman_collection.json # Bộ Postman Collection kiểm thử API
 ├── Dockerfile                           # Dockerfile đóng gói ứng dụng (Node 20 Alpine)
 ├── docker-compose.yml                   # Khởi chạy toàn bộ hệ thống bằng Docker Compose
 ├── package.json                         # Quản lý thư viện và script thực thi

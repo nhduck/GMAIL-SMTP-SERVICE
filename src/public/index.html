@@ -102,8 +102,8 @@
           </div>
 
           <div class="form-group" id="groupOtp">
-            <label>Mã OTP (Tùy chọn - nếu để trống Gateway sẽ tự sinh 6 số):</label>
-            <input type="text" id="testOtp" maxlength="6" placeholder="vd: 889922 (hoặc để trống)" value="" />
+            <label>Mã OTP (Ở Sandbox có thể để trống để tự sinh 6 số; ở Live Gmail bắt buộc nhập):</label>
+            <input type="text" id="testOtp" maxlength="6" placeholder="vd: 889922 (Sandbox có thể để trống)" value="" />
           </div>
 
           <div class="form-group" id="groupVerifyUrl" style="display: none;">
@@ -149,6 +149,10 @@
             <label>Webhook URL (Tùy chọn - Nhận thông báo khi có mail mới):</label>
             <input type="url" id="cfgWebhookUrl" placeholder="https://my-backend.com/api/email-received" />
           </div>
+          <div class="form-group">
+            <label>X-API-Key (Tùy chọn - chỉ cần điền nếu máy chủ có bật biến môi trường API_KEY):</label>
+            <input type="password" id="cfgApiKey" placeholder="Để trống nếu chạy local mặc định" />
+          </div>
           <button type="submit" class="btn btn-primary">Lưu Cấu Hình</button>
           <div id="configStatus" class="status-box"></div>
         </form>
@@ -162,7 +166,7 @@
         <p class="desc">Các hệ thống ứng dụng trong kiến trúc SOA gọi Email Gateway thông qua các endpoint REST API chuẩn:</p>
 
         <h3>1. Xác thực tài khoản (Account Verification)</h3>
-        <pre><code>// Gọi API xác thực tài khoản (Live mode cần truyền otp hoặc verifyUrl; Sandbox có thể bỏ trống để tự sinh)
+        <pre><code>// Gọi API xác thực tài khoản (Live mode bắt buộc truyền otp hoặc verifyUrl; Sandbox có thể bỏ trống để tự sinh)
 await fetch("http://localhost:3000/api/v1/verify-email", {
   method: "POST",
   headers: { "Content-Type": "application/json" },

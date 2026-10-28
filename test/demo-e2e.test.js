@@ -4,8 +4,7 @@
  * Kịch bản: Nhân viên đăng ký -> Nhận OTP -> Đăng nhập -> Tạo đơn xin nghỉ -> Quản lý duyệt -> Nhận kết quả -> Quên mật khẩu
  */
 
-const http = require('http');
-const { app: emailApp, server: emailServer } = require('../src/server');
+const { server: emailServer } = require('../src/server');
 const leaveApp = require('../demo-app/server');
 
 const EMAIL_PORT = 3000;
@@ -13,6 +12,7 @@ const DEMO_PORT = 4000;
 
 let startedEmailLocally = false;
 let startedDemoLocally = false;
+let demoServerInstance = null;
 
 async function isPortResponding(port) {
   try {
@@ -98,6 +98,10 @@ async function runE2ETest() {
     if (!otpMail) {
       throw new Error('❌ Không tìm thấy email OTP trong hộp thư ảo Sandbox!');
     }
+
+    // Kiểm tra thông báo thời hạn OTP 5 phút khớp với store.js
+    const otpHas5Min = otpMail.html.includes('5 phút');
+    console.log(`Email OTP hiển thị đúng thời hạn 5 phút: ${otpHas5Min ? '✅ ĐẠT CHUẨN' : '❌ SAI TTL'}`);
 
     // Trích xuất mã OTP 6 số từ thẻ HTML (tránh nhầm mã màu CSS như #334155)
     const otpMatch = otpMail.html.match(/>\s*(\d{6})\s*</);
@@ -197,8 +201,20 @@ async function runE2ETest() {
     });
     console.log(`Chặn dùng lại token đã xử lý: ${replayRes.status === 400 ? '✅ ĐÃ CHẶN AN TOÀN (400)' : '❌ LỖI'}`);
 
-    // BƯỚC 8: QUÊN MẬT KHẨU & ĐẶT LẠI MẬT KHẨU
-    console.log('\n--- BƯỚC 8: Kiểm thử chức năng Quên mật khẩu (TTL 5 phút) ---');
+    // BƯỚC 8: QUÊN MẬT KHẨU & ĐẶT LẠI MẬT KHẨU (KÈM HỦY TOKEN CŨ & SESSION CŨ)
+    console.log('\n--- BƯỚC 8: Kiểm thử chức năng Quên mật khẩu (TTL 5 phút, hủy link cũ & hủy session cũ) ---');
+    // Yêu cầu lần 1 (sẽ bị vô hiệu hóa khi yêu cầu lần 2)
+    await fetch(`http://localhost:${DEMO_PORT}/api/forgot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: employeeEmail })
+    });
+    await sleep(200);
+    const mailsOld = (await (await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`)).json()).data;
+    const firstResetMail = mailsOld.find(m => m.to === employeeEmail && m.subject.includes('đặt lại mật khẩu'));
+    const oldResetToken = firstResetMail.html.match(/#reset-([a-f0-9]+)/)[1];
+
+    // Yêu cầu lần 2 (mới nhất)
     const forgotRes = await fetch(`http://localhost:${DEMO_PORT}/api/forgot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -224,13 +240,27 @@ async function runE2ETest() {
     }
     const resetToken = resetTokenMatch[1];
 
-    // Tiến hành đổi mật khẩu mới
+    // Thử dùng token cũ (phải bị từ chối vì đã có token mới)
+    const oldTokenTry = await fetch(`http://localhost:${DEMO_PORT}/api/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: oldResetToken, newPassword: 'OldAttemptPassword@1' })
+    });
+    console.log(`Vô hiệu hóa link reset cũ khi xin link mới: ${oldTokenTry.status === 400 ? '✅ ĐÃ CHẶN AN TOÀN (400)' : '❌ LỖI'}`);
+
+    // Tiến hành đổi mật khẩu mới bằng token mới nhất
     const resetRes = await fetch(`http://localhost:${DEMO_PORT}/api/reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: resetToken, newPassword: 'NewPassword@999' })
     });
     console.log(`Đặt lại mật khẩu mới: ${resetRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
+
+    // Kiểm tra session cũ đã bị thu hồi sau khi đổi mật khẩu
+    const oldSessionCheck = await fetch(`http://localhost:${DEMO_PORT}/api/me`, {
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
+    });
+    console.log(`Thu hồi phiên đăng nhập cũ sau khi đổi mật khẩu: ${oldSessionCheck.status === 401 ? '✅ ĐÃ THU HỒI (401)' : '❌ LỖI'}`);
 
     // Đăng nhập lại với mật khẩu mới
     const newLoginRes = await fetch(`http://localhost:${DEMO_PORT}/api/login`, {
@@ -240,8 +270,8 @@ async function runE2ETest() {
     });
     console.log(`Đăng nhập bằng mật khẩu mới: ${newLoginRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
 
-    // BƯỚC 9: KIỂM THỬ BẢO MẬT OTP
-    console.log('\n--- BƯỚC 9: Kiểm thử bảo mật OTP (Chống brute-force: hủy sau 5 lần sai) ---');
+    // BƯỚC 9: KIỂM THỬ BẢO MẬT OTP & CONTRACT CHẾ ĐỘ LIVE_GMAIL
+    console.log('\n--- BƯỚC 9: Kiểm thử bảo mật OTP (Chống brute-force 5 lần & Ràng buộc Contract LIVE_GMAIL) ---');
     const dummyEmail = 'dummy_test@tdtu.edu.vn';
     await fetch(`http://localhost:${DEMO_PORT}/api/register`, {
       method: 'POST',
@@ -262,6 +292,26 @@ async function runE2ETest() {
       body: JSON.stringify({ email: dummyEmail, otp: '999999' })
     });
     console.log(`Hủy mã OTP và từ chối sau 5 lần sai: ${blockedRes.status === 400 ? '✅ ĐÃ CHẶN CHÍNH XÁC (400)' : '❌ LỖI'}`);
+
+    // Kiểm thử Contract LIVE_GMAIL: không truyền otp/verifyUrl phải trả về 400 Bad Request
+    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'LIVE_GMAIL' })
+    });
+    const liveNoOtpRes = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: 'student@tdtu.edu.vn', name: 'Nguyễn Văn A' })
+    });
+    console.log(`Chặn thiếu otp/verifyUrl ở chế độ LIVE_GMAIL (400): ${liveNoOtpRes.status === 400 ? '✅ ĐÚNG CONTRACT SLIDE' : '❌ LỖI'}`);
+
+    // Trả lại chế độ SANDBOX
+    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'SANDBOX' })
+    });
 
     console.log('\n====================================================');
     console.log('🎉 TOÀN BỘ KỊCH BẢN DEMO END-TO-END ĐÃ ĐẠT CHUẨN 100%!');

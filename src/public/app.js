@@ -3,6 +3,27 @@
 let mails = [];
 let currentMode = 'SANDBOX';
 
+// Hỗ trợ gắn kèm header X-API-Key khi máy chủ bật bảo mật API_KEY
+function getStoredApiKey() {
+  try {
+    return localStorage.getItem('GMAIL_GATEWAY_API_KEY') || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function buildApiHeaders(hasJsonBody = false) {
+  const headers = {};
+  if (hasJsonBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const apiKey = getStoredApiKey();
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
+  return headers;
+}
+
 // DOM Elements
 const mailList = document.getElementById('mailList');
 const mailViewer = document.getElementById('mailViewer');
@@ -10,6 +31,11 @@ const mailCount = document.getElementById('mailCount');
 const btnSandbox = document.getElementById('btnSandbox');
 const btnLive = document.getElementById('btnLive');
 const currentModeLabel = document.getElementById('currentModeLabel');
+const cfgApiKeyInput = document.getElementById('cfgApiKey');
+
+if (cfgApiKeyInput) {
+  cfgApiKeyInput.value = getStoredApiKey();
+}
 
 // Tab Navigation
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -25,11 +51,30 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 btnSandbox.addEventListener('click', () => switchMode('SANDBOX'));
 btnLive.addEventListener('click', () => switchMode('LIVE_GMAIL'));
 
+async function loadInitialConfig() {
+  try {
+    const res = await fetch('/api/v1/config', { headers: buildApiHeaders() });
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.success && json.data) {
+      updateModeUI(json.data.mode || 'SANDBOX');
+      if (json.data.rawGmailUser && document.getElementById('cfgUser')) {
+        document.getElementById('cfgUser').value = json.data.rawGmailUser;
+      }
+      if (json.data.webhookUrl && document.getElementById('cfgWebhookUrl')) {
+        document.getElementById('cfgWebhookUrl').value = json.data.webhookUrl;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function switchMode(mode) {
   try {
     const res = await fetch('/api/v1/config/mode', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildApiHeaders(true),
       body: JSON.stringify({ mode })
     });
     if (res.ok) {
@@ -56,7 +101,7 @@ function updateModeUI(mode) {
 // Fetch Mails
 async function loadMails() {
   try {
-    const res = await fetch('/api/v1/mails');
+    const res = await fetch('/api/v1/mails', { headers: buildApiHeaders() });
     const json = await res.json();
     if (json.success) {
       mails = json.data;
@@ -104,7 +149,7 @@ window.selectMail = function (id) {
 
 // Clear Mails
 document.getElementById('btnClearMails').addEventListener('click', async () => {
-  await fetch('/api/v1/mails', { method: 'DELETE' });
+  await fetch('/api/v1/mails', { method: 'DELETE', headers: buildApiHeaders() });
   mails = [];
   renderMailList();
 });
@@ -201,7 +246,7 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildApiHeaders(true),
       body: JSON.stringify(payload)
     });
     const result = await res.json();
@@ -226,18 +271,33 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
   const user = document.getElementById('cfgUser').value;
   const appPassword = document.getElementById('cfgAppPassword').value;
   const webhookUrl = document.getElementById('cfgWebhookUrl').value;
+  const apiKey = cfgApiKeyInput ? cfgApiKeyInput.value.trim() : '';
   const statusBox = document.getElementById('configStatus');
+
+  try {
+    if (apiKey) {
+      localStorage.setItem('GMAIL_GATEWAY_API_KEY', apiKey);
+    } else {
+      localStorage.removeItem('GMAIL_GATEWAY_API_KEY');
+    }
+  } catch (_) {}
 
   statusBox.innerText = 'Đang lưu...';
   try {
     const res = await fetch('/api/v1/config/credentials', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildApiHeaders(true),
       body: JSON.stringify({ user, appPassword, webhookUrl })
     });
     const result = await res.json();
-    statusBox.innerText = '✓ ' + result.message;
-    statusBox.style.color = '#10b981';
+    if (res.ok) {
+      statusBox.innerText = '✓ ' + result.message;
+      statusBox.style.color = '#10b981';
+      loadMails();
+    } else {
+      statusBox.innerText = '✕ Lỗi: ' + (result.error || 'Không thể lưu cấu hình');
+      statusBox.style.color = '#ef4444';
+    }
   } catch (err) {
     statusBox.innerText = '✕ Lỗi: ' + err.message;
     statusBox.style.color = '#ef4444';
@@ -276,5 +336,6 @@ function escapeHtml(str) {
 }
 
 // Initial Boot
+loadInitialConfig();
 loadMails();
 connectWebSocket();

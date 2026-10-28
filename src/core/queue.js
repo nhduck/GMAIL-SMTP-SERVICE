@@ -1,7 +1,23 @@
 // Advanced Queue Engine: Hàng đợi bất đồng bộ có Retry Exponential Backoff,
+// phân loại lỗi vĩnh viễn (5xx/Auth) vs tạm thời (4xx/Network),
 // Dead-Letter Queue (DLQ), Điều phối luồng và cơ chế Graceful Drain
 
 const { v4: uuidv4 } = require('uuid');
+
+// Nhận diện các lỗi SMTP vĩnh viễn không nên tự động retry (tránh bị khóa tài khoản khi sai mật khẩu)
+function isPermanentSmtpError(err) {
+  if (!err) return false;
+  if (err.permanent === true) return true;
+  if (err.code === 'EAUTH' || err.code === 'EENVELOPE') return true;
+  if (typeof err.responseCode === 'number' && err.responseCode >= 500 && err.responseCode < 600) {
+    return true;
+  }
+  const msg = String(err.message || '');
+  if (/\b(535|534|530|550|552|553|554)\b/.test(msg) || /BadCredentials|Invalid login/i.test(msg)) {
+    return true;
+  }
+  return false;
+}
 
 class AsyncEmailQueue {
   constructor(options = {}) {
@@ -103,11 +119,13 @@ class AsyncEmailQueue {
       console.error(`[Queue] Job ${job.id} thất bại (Lần ${job.retries + 1}):`, err.message);
       job.error = err.message;
 
-      if (job.retries < this.maxRetries) {
+      const permanent = isPermanentSmtpError(err);
+
+      if (!permanent && job.retries < this.maxRetries) {
         job.retries += 1;
         this.metrics.totalRetried += 1;
 
-        // Exponential Backoff: delay = baseDelay * (2 ^ (retries - 1))
+        // Exponential Backoff: delay = baseDelay * (2 ^ (retries - 1)) -> 1s, 2s, 4s
         const backoffDelay = this.baseDelayMs * Math.pow(2, job.retries - 1);
         console.log(`[Queue] Lên lịch thử lại job ${job.id} sau ${backoffDelay}ms (Exponential Backoff)...`);
 
@@ -119,7 +137,7 @@ class AsyncEmailQueue {
           this.scheduleNext();
         }, backoffDelay);
       } else {
-        // Vượt quá số lần thử lại -> Chuyển vào Dead-Letter Queue
+        // Lỗi vĩnh viễn (5xx/EAUTH) hoặc đã vượt quá số lần thử lại -> Chuyển vào Dead-Letter Queue
         job.status = 'DEAD_LETTER';
         job.completedAt = new Date().toISOString();
         job.movedToDlqAt = new Date().toISOString();
@@ -130,7 +148,10 @@ class AsyncEmailQueue {
         this.deadLetterQueue.unshift(job);
         if (this.deadLetterQueue.length > 100) this.deadLetterQueue.pop();
 
-        console.error(`[Dead-Letter Queue] Job ${job.id} đã thử ${this.maxRetries} lần thất bại. Đưa vào DLQ.`);
+        const reason = permanent
+          ? 'Lỗi SMTP vĩnh viễn (5xx/Auth), không thử lại tự động'
+          : `Đã thử ${this.maxRetries} lần thất bại`;
+        console.error(`[Dead-Letter Queue] Job ${job.id}: ${reason}. Đưa vào DLQ.`);
         this.emit('JOB_MOVED_TO_DLQ', job);
       }
     } finally {
@@ -205,4 +226,6 @@ class AsyncEmailQueue {
   }
 }
 
-module.exports = new AsyncEmailQueue();
+const defaultQueue = new AsyncEmailQueue();
+defaultQueue.isPermanentSmtpError = isPermanentSmtpError;
+module.exports = defaultQueue;
