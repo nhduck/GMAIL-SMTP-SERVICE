@@ -1,5 +1,6 @@
 // Mail Controller: Tiếp nhận gửi mail, kiểm tra validation RFC 5322,
-// hỗ trợ 3 nghiệp vụ cốt lõi: Account Verification, Password Reset, HTML Email Templates
+// hỗ trợ 3 nghiệp vụ cốt lõi: Account Verification, Password Reset, HTML Email Templates,
+// và xử lý phản hồi thư hai chiều trong Sandbox (sandboxReply)
 
 const crypto = require('crypto');
 const config = require('../config');
@@ -322,5 +323,71 @@ module.exports = {
   clearMails: (req, res) => {
     sandboxStore.clearMails();
     return res.json({ success: true, message: 'Đã dọn dẹp hòm thư Sandbox.' });
+  },
+
+  // POST /api/v1/sandbox/reply (Giả lập thư trả lời trong Sandbox, đi qua đúng bộ lọc cleanReplyText và Webhook Dispatcher)
+  sandboxReply: async (req, res) => {
+    if (modeManager.getMode() !== 'SANDBOX') {
+      return res.status(400).json({
+        success: false,
+        error: 'Chức năng sandboxReply chỉ hoạt động khi Gateway đang ở chế độ SANDBOX.'
+      });
+    }
+
+    const { mailId, replyText, from } = req.body;
+    if (!mailId || !replyText) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vui lòng cung cấp mailId và replyText.'
+      });
+    }
+
+    const originalMail = sandboxStore.getMailById(mailId);
+    if (!originalMail) {
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy email gốc trong hộp thư ảo Sandbox.'
+      });
+    }
+
+    // Làm sạch trích dẫn thư trả lời bằng đúng text-cleaner
+    const { cleanReplyText } = require('../core/text-cleaner');
+    const cleanedText = cleanReplyText(replyText);
+
+    // Tiêu đề Re: từ email gốc
+    const replySubject = originalMail.subject.startsWith('Re:')
+      ? originalMail.subject
+      : `Re: ${originalMail.subject}`;
+
+    const senderEmail = from || originalMail.to; // Người nhận của thư gốc đóng vai trò người trả lời
+    const messageId = `<sandbox-reply-${Date.now()}@demo.local>`;
+    const inReplyTo = `<${originalMail.id}@sandbox.local>`;
+
+    const mailPayload = {
+      messageId,
+      inReplyTo,
+      from: senderEmail,
+      to: originalMail.from,
+      subject: replySubject,
+      replyText: cleanedText,
+      rawText: replyText,
+      receivedAt: new Date().toISOString()
+    };
+
+    // Broadcast WebSocket để Dashboard hiển thị sự kiện thư đến
+    if (req.app.get('broadcastWs')) {
+      req.app.get('broadcastWs')({ type: 'INBOUND_MAIL', data: mailPayload });
+    }
+
+    // Bắn qua Webhook Dispatcher tới Demo App (cổng 4000)
+    const webhookDispatcher = require('../core/webhook-dispatcher');
+    const dispatchResult = await webhookDispatcher.dispatch(mailPayload);
+
+    return res.json({
+      success: true,
+      message: 'Đã gửi phản hồi thư qua luồng Webhook Inbound.',
+      data: mailPayload,
+      webhookResult: dispatchResult
+    });
   }
 };

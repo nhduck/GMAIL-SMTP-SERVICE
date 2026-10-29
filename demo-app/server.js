@@ -1,7 +1,7 @@
 /**
  * demo-app/server.js
  * Máy chủ Express cho Demo Ứng Dụng Xin Nghỉ Phép (Cổng 4000)
- * Độc lập với Email Service (Cổng 3000), gọi qua HTTP REST API
+ * Độc lập với Email Service (Cổng 3000), gọi qua HTTP REST API & nhận Webhook phản hồi từ Email Reply
  */
 
 require('dotenv').config();
@@ -11,10 +11,12 @@ const cors = require('cors');
 
 const store = require('./store');
 const mailer = require('./mailer');
+const { extractPureEmail } = require('../src/core/text-cleaner');
 
 const app = express();
 const PORT = process.env.DEMO_PORT || 4000;
 const DEMO_APP_URL = process.env.DEMO_APP_URL || `http://localhost:${PORT}`;
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'sec_seminar_webhook_key';
 
 // Bộ giới hạn tần suất (Rate Limiter) đơn giản chống spam email (email bombing) trên /api/register và /api/forgot
 const rateBuckets = new Map(); // key -> { count, resetAt }
@@ -44,19 +46,9 @@ function createRateLimiter({ windowMs = 60 * 1000, max = 10, label = 'yêu cầu
   };
 }
 
-async function resolveManagerEmail() {
-  const envManager = (process.env.MANAGER_EMAIL || '').toLowerCase().trim();
-  if (envManager && envManager !== 'manager@demo.local') {
-    return envManager;
-  }
-
-  // Nếu chưa cấu hình MANAGER_EMAIL hoặc để mặc định demo.local, kiểm tra Gateway xem có đang ở LIVE_GMAIL không
-  const cfg = await mailer.getGatewayConfig();
-  if (cfg && cfg.mode === 'LIVE_GMAIL' && cfg.rawGmailUser) {
-    return cfg.rawGmailUser;
-  }
-
-  return envManager || 'manager@demo.local';
+// Lấy địa chỉ Quản lý mặc định từ biến môi trường (KHÔNG tự lấy Gmail của dịch vụ để tránh vòng lặp Reply)
+function resolveManagerEmail() {
+  return (process.env.MANAGER_EMAIL || 'manager@demo.local').toLowerCase().trim();
 }
 
 app.use(cors());
@@ -82,7 +74,7 @@ function authenticate(req, res, next) {
 
 // HEALTH & THÔNG TIN HỆ THỐNG
 app.get('/api/info', async (req, res) => {
-  const activeManager = await resolveManagerEmail();
+  const activeManager = resolveManagerEmail();
   res.json({
     app: 'Cổng Thông Tin Nhân Sự TMT Company',
     managerEmail: activeManager,
@@ -121,7 +113,6 @@ app.post('/api/register', createRateLimiter({ windowMs: 60 * 1000, max: 10, labe
     }
 
     // Bảo mật: Chỉ trả kèm sandboxOtp khi Gateway thực sự đang ở chế độ SANDBOX
-    // (không dựa vào process.env.MODE của demo-app vì người dùng có thể đã chuyển Gateway sang LIVE_GMAIL trên Dashboard)
     const gatewayMode = mailRes.data && mailRes.data.mode;
     const isSandbox = gatewayMode === 'SANDBOX';
 
@@ -247,28 +238,23 @@ app.post('/api/leaves', authenticate, async (req, res) => {
       });
     }
 
+    // Xác định email Quản lý nhận đơn: Ưu tiên form nhập -> .env -> Sandbox mặc định
+    const targetManager = (managerEmail && String(managerEmail).trim().toLowerCase()) || resolveManagerEmail();
+
     const leave = store.createLeave({
       employeeEmail: req.user.email,
       employeeName: req.user.name,
       startDate,
       endDate,
       days: numDays,
-      reason: cleanReason
+      reason: cleanReason,
+      managerEmail: targetManager
     });
 
-    // Tạo link an toàn cho Quản lý (chỉ mở trang xác nhận GET, không duyệt thẳng)
-    const approveUrl = `${DEMO_APP_URL}/decision/${leave.decisionToken}?action=approve`;
-    const rejectUrl = `${DEMO_APP_URL}/decision/${leave.decisionToken}?action=reject`;
-
-    // Xác định email Quản lý nhận đơn: Ưu tiên form nhập -> .env -> Tài khoản Live Gmail Gateway -> Sandbox mặc định
-    const targetManager = (managerEmail && String(managerEmail).trim().toLowerCase()) || await resolveManagerEmail();
-
-    // Gọi Email Service gửi thư Action Email tới Quản lý
+    // Gọi Email Service gửi thư yêu cầu phê duyệt tới Quản lý (chuẩn 2 chiều: Quản lý Reply trực tiếp trong Gmail)
     const mailRes = await mailer.sendLeaveRequestToManager({
       managerEmail: targetManager,
-      leave,
-      approveUrl,
-      rejectUrl
+      leave
     });
 
     if (!mailRes.success) {
@@ -277,7 +263,7 @@ app.post('/api/leaves', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đơn xin nghỉ phép đã được gửi thành công tới Quản lý (${targetManager}).`,
+      message: `Đơn xin nghỉ phép đã được gửi thành công tới Quản lý (${targetManager}). Quản lý chỉ cần Reply "Duyệt" hoặc "Từ chối" trên Gmail.`,
       leave
     });
   } catch (err) {
@@ -291,7 +277,124 @@ app.get('/api/leaves', authenticate, (req, res) => {
   res.json({ success: true, leaves: list });
 });
 
-// TRANG XÁC NHẬN PHÊ DUYỆT CỦA QUẢN LÝ
+// WEBHOOK CONSUMER: Tiếp nhận sự kiện email.reply.received từ Email Gateway (Cổng 3000)
+// Đây là nơi thực hiện toàn bộ nghiệp vụ xử lý Inbound Email độc lập, giữ Gateway thuần túy về Email
+app.post('/api/webhook/email-reply', async (req, res) => {
+  // 1. Kiểm tra xác thực khóa bí mật X-Webhook-Secret
+  const incomingSecret = req.headers['x-webhook-secret'];
+  if (!incomingSecret || incomingSecret !== WEBHOOK_SECRET) {
+    console.warn('[Webhook Consumer] Từ chối: X-Webhook-Secret không khớp hoặc bị thiếu.');
+    return res.status(401).json({ success: false, error: 'Xác thực Webhook Secret không hợp lệ.' });
+  }
+
+  const { event, data } = req.body;
+  if (event !== 'email.reply.received' || !data) {
+    return res.status(400).json({ success: false, error: 'Payload không đúng định dạng sự kiện email.reply.received.' });
+  }
+
+  console.log(`[Webhook Consumer] Nhận sự kiện email.reply.received từ ${data.from}: "${data.replyText}"`);
+
+  // 2. Bóc tách mã đơn nghỉ phép #lv_[a-f0-9]{12} từ Subject hoặc ReplyText
+  const subjectStr = String(data.subject || '');
+  const textStr = String(data.replyText || '');
+  const match = subjectStr.match(/(lv_[a-f0-9]{12})/i) || textStr.match(/(lv_[a-f0-9]{12})/i);
+
+  if (!match) {
+    console.log('[Webhook Consumer] Bỏ qua: Không tìm thấy mã đơn nghỉ phép trong tiêu đề hoặc nội dung.');
+    return res.json({ success: true, ignored: true, reason: 'NO_LEAVE_ID' });
+  }
+
+  const leaveId = match[1].toLowerCase();
+  const leave = store.getLeave(leaveId);
+  if (!leave) {
+    console.log(`[Webhook Consumer] Bỏ qua: Không tìm thấy đơn nghỉ phép #${leaveId}.`);
+    return res.json({ success: true, ignored: true, reason: 'LEAVE_NOT_FOUND' });
+  }
+
+  // 3. Kiểm tra địa chỉ người gửi (Exact Match): Người gửi phải đúng là Quản lý của đơn này
+  const pureSender = extractPureEmail(data.from || '');
+  const expectedManager = (leave.managerEmail || resolveManagerEmail()).toLowerCase();
+
+  if (pureSender !== expectedManager) {
+    console.warn(`[Webhook Consumer] Từ chối xử lý: Người gửi (${pureSender}) không khớp với Quản lý được giao (${expectedManager}) của đơn #${leaveId}.`);
+    return res.json({
+      success: true,
+      ignored: true,
+      reason: 'SENDER_NOT_MANAGER',
+      message: `Người gửi (${pureSender}) không khớp với Quản lý phụ trách đơn (${expectedManager}).`
+    });
+  }
+
+  // 4. Chống Replay Attack: Đơn đã xử lý trước đó thì không xử lý lại
+  if (leave.status !== 'PENDING') {
+    console.log(`[Webhook Consumer] Bỏ qua: Đơn #${leaveId} đã được quyết định trước đó (${leave.status}).`);
+    return res.json({
+      success: true,
+      ignored: true,
+      reason: 'ALREADY_DECIDED',
+      status: leave.status
+    });
+  }
+
+  // 5. Phân tích ngữ nghĩa theo ranh giới từ (\b) sau khi chuẩn hóa bỏ dấu tiếng Việt
+  const normalizedText = textStr
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  // Kiểm tra từ chối / phủ định trước
+  const rejectRegex = /\b(tu choi|reject|khong duyet|chua duyet|khong dong y|bac bo)\b/i;
+  const hasReject = rejectRegex.test(normalizedText);
+
+  // Để kiểm tra chấp thuận: loại bỏ các cụm phủ định ("khong duyet", "khong dong y", "dung duyet", "chua duyet")
+  // để tránh việc từ "duyet" trong "khong duyet" bị nhận diện nhầm là approve
+  const textWithoutNegative = normalizedText.replace(/\b(khong|chua|dung)\s+(duyet|dong y|chap thuan)\b/g, '');
+  const approveRegex = /\b(duyet|approve|dong y|ok|chap thuan)\b/i;
+  const hasApprove = approveRegex.test(textWithoutNegative);
+
+  // 6. Xử lý trường hợp mâu thuẫn (vừa có duyệt vừa có từ chối) hoặc không rõ ràng
+  if ((hasReject && hasApprove) || (!hasReject && !hasApprove)) {
+    console.log(`[Webhook Consumer] Cú pháp phản hồi mơ hồ cho đơn #${leaveId}: "${data.replyText}". Gửi thư nhắc cú pháp...`);
+    await mailer.sendClarificationEmail({
+      managerEmail: expectedManager,
+      leaveId,
+      receivedText: data.replyText
+    });
+    return res.json({
+      success: true,
+      ambiguous: true,
+      message: 'Nội dung phản hồi không rõ ràng, đã gửi email nhắc nhở cú pháp cho Quản lý.'
+    });
+  }
+
+  // 7. Xác định quyết định dứt khoát
+  const action = hasReject ? 'REJECT' : 'APPROVE';
+  const result = store.processDecisionDirect(leaveId, action, 'EMAIL_REPLY');
+
+  if (!result.valid) {
+    return res.json({ success: true, ignored: true, reason: result.error });
+  }
+
+  // 8. Tự động gửi email kết quả về cho Nhân viên
+  const mailRes = await mailer.sendLeaveResultToEmployee({
+    employeeEmail: leave.employeeEmail,
+    leave: result.leave,
+    action
+  });
+
+  if (!mailRes.success) {
+    console.warn('[Demo App] Gửi email kết quả cho nhân viên thất bại:', mailRes.error);
+  }
+
+  console.log(`✓ [Webhook Consumer] Đã phê duyệt đơn #${leaveId} thành công với kết quả ${result.leave.status} qua Email Reply!`);
+  return res.json({
+    success: true,
+    message: `Đã cập nhật đơn #${leaveId} sang ${result.leave.status} qua Email Reply.`,
+    leave: result.leave
+  });
+});
+
+// TRANG XÁC NHẬN PHÊ DUYỆT DỰ PHÒNG QUA WEB
 app.get('/decision/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'decision.html'));
 });
@@ -319,7 +422,7 @@ app.get('/api/decision-info/:token', (req, res) => {
   });
 });
 
-// Quản lý bấm nút POST xác nhận quyết định (Approve / Reject)
+// Quản lý bấm nút POST xác nhận quyết định qua Web (Dự phòng)
 app.post('/api/decision', async (req, res) => {
   const { token, action } = req.body;
   if (!token || !action) {
@@ -398,7 +501,7 @@ app.post('/api/reset', (req, res) => {
 // Khởi chạy Server
 if (require.main === module) {
   app.listen(PORT, async () => {
-    const activeMgr = await resolveManagerEmail();
+    const activeMgr = resolveManagerEmail();
     console.log(`🏢 Máy chủ đang chạy tại: ${DEMO_APP_URL}`);
     console.log(`👤 [Quản lý mặc định]: ${activeMgr}`);
     console.log(`🔗 [Kết nối Gateway]:  ${process.env.SERVICE_URL || 'http://localhost:3000'}`);

@@ -1,7 +1,7 @@
 /**
  * demo-app/store.js
- * Demo Ứng Dụng Xin Nghỉ Phép TMT COMPANY(End-to-End)
- * Quản lý người dùng, OTP xác thực, đơn nghỉ phép, token quyết định và phiên làm việc
+ * Demo Ứng Dụng Xin Nghỉ Phép TMT COMPANY (End-to-End)
+ * Quản lý người dùng, OTP xác thực, đơn nghỉ phép, token quyết định và xử lý phê duyệt hai chiều qua Email Reply
  */
 
 const crypto = require('crypto');
@@ -27,7 +27,7 @@ class DemoStore {
   constructor() {
     this.users = new Map();         // email -> { id, email, name, passwordHash, salt, isVerified, role }
     this.otps = new Map();          // email -> { otp, expiresAt, attempts }
-    this.leaves = new Map();        // leaveId -> { id, employeeEmail, employeeName, startDate, endDate, days, reason, status, decisionToken, createdAt, decidedAt }
+    this.leaves = new Map();        // leaveId -> { id, employeeEmail, employeeName, startDate, endDate, days, reason, managerEmail, status, decisionToken, createdAt, decidedAt, decidedBy }
     this.tokens = new Map();        // tokenString -> { type, data, expiresAt, used }
     this.sessions = new Map();      // sessionId -> { email, name, role, createdAt, expiresAt }
 
@@ -166,9 +166,12 @@ class DemoStore {
   }
 
   // LEAVE MANAGEMENT
-  createLeave({ employeeEmail, employeeName, startDate, endDate, days, reason }) {
+  createLeave({ employeeEmail, employeeName, startDate, endDate, days, reason, managerEmail }) {
     const leaveId = 'lv_' + crypto.randomBytes(6).toString('hex');
     const decisionToken = crypto.randomBytes(24).toString('hex');
+
+    const defaultMgr = (process.env.MANAGER_EMAIL || 'manager@demo.local').toLowerCase().trim();
+    const assignedManager = managerEmail ? String(managerEmail).toLowerCase().trim() : defaultMgr;
 
     const leave = {
       id: leaveId,
@@ -178,15 +181,17 @@ class DemoStore {
       endDate,
       days: Number(days) || 1,
       reason: reason.trim(),
+      managerEmail: assignedManager,
       status: 'PENDING', // PENDING | APPROVED | REJECTED
       decisionToken,
       createdAt: new Date().toISOString(),
-      decidedAt: null
+      decidedAt: null,
+      decidedBy: null
     };
 
     this.leaves.set(leaveId, leave);
 
-    // Lưu token quyết định (Hiệu lực 24 giờ, dùng 1 lần)
+    // Lưu token quyết định (Hiệu lực 24 giờ, dùng 1 lần cho kênh dự phòng Web)
     this.tokens.set(decisionToken, {
       type: 'LEAVE_DECISION',
       data: { leaveId },
@@ -208,7 +213,7 @@ class DemoStore {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  // DECISION TOKEN VERIFICATION
+  // DECISION TOKEN VERIFICATION (Dự phòng cho Web)
   getDecisionByToken(token) {
     const record = this.tokens.get(token);
     if (!record || record.type !== 'LEAVE_DECISION') {
@@ -247,9 +252,42 @@ class DemoStore {
     const leave = check.leave;
     leave.status = normalizedAction === 'APPROVE' ? 'APPROVED' : 'REJECTED';
     leave.decidedAt = new Date().toISOString();
+    leave.decidedBy = 'WEB_FALLBACK';
 
     // Đánh dấu token đã sử dụng (dùng 1 lần)
     check.tokenRecord.used = true;
+
+    return { valid: true, leave, status: leave.status };
+  }
+
+  // XỬ LÝ PHÊ DUYỆT TRỰC TIẾP TỪ EMAIL REPLY (IMAP & WEBHOOK)
+  processDecisionDirect(leaveId, action, decidedBy = 'EMAIL_REPLY') {
+    const leave = this.leaves.get(leaveId);
+    if (!leave) {
+      return { valid: false, error: `Không tìm thấy đơn nghỉ phép #${leaveId}.` };
+    }
+
+    if (leave.status !== 'PENDING') {
+      return {
+        valid: false,
+        alreadyProcessed: true,
+        error: `Đơn nghỉ phép #${leaveId} đã được xử lý trước đó với kết quả: ${leave.status}. Không thể thao tác lại.`
+      };
+    }
+
+    const normalizedAction = action.toUpperCase();
+    if (!['APPROVE', 'REJECT'].includes(normalizedAction)) {
+      return { valid: false, error: 'Hành động không hợp lệ. Chỉ chấp nhận approve hoặc reject.' };
+    }
+
+    leave.status = normalizedAction === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    leave.decidedAt = new Date().toISOString();
+    leave.decidedBy = decidedBy;
+
+    // Vô hiệu hóa token web dự phòng nếu có
+    if (leave.decisionToken && this.tokens.has(leave.decisionToken)) {
+      this.tokens.get(leave.decisionToken).used = true;
+    }
 
     return { valid: true, leave, status: leave.status };
   }
