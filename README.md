@@ -63,7 +63,7 @@ Sau khi khởi chạy, truy cập:
 
 ### 3: Chạy Kiểm Thử Tự Động
 ```bash
-`npm run test:e2e`    # Kiểm thử tự động 100% kịch bản xin nghỉ phép, xác thực OTP, Reply Duyệt/Từ chối, chống Replay & bảo mật Webhook
+npm run test:e2e    # Kiểm thử tự động 100% kịch bản xin nghỉ phép, xác thực OTP, Reply Duyệt/Từ chối, chống Replay & bảo mật Webhook
 npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Circuit Breaker, Template XSS/URL
 ```
 

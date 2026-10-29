@@ -263,7 +263,7 @@ app.post('/api/leaves', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đơn xin nghỉ phép đã được gửi thành công tới Quản lý (${targetManager}). Quản lý chỉ cần Reply "Duyệt" hoặc "Từ chối" trên Gmail.`,
+      message: 'Đơn xin nghỉ phép đã được gửi thành công tới Quản lý, nhân viên vui lòng chờ Quản lý phản hồi.',
       leave
     });
   } catch (err) {
@@ -486,10 +486,9 @@ app.post('/api/forgot', createRateLimiter({ windowMs: 60 * 1000, max: 5, label: 
     });
   }
 
-  // Luôn trả về thông báo chung tránh dò email
   res.json({
     success: true,
-    message: 'Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hòm thư của bạn.'
+    message: 'Đã gửi liên kết đặt lại mật khẩu đến hòm thư của nhân viên.'
   });
 });
 

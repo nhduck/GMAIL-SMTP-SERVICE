@@ -23,8 +23,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/health",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "health"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
 						},
 						"description": "Kiểm tra tình trạng sống của máy chủ Email Gateway."
 					},
@@ -51,8 +57,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/verify-email",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "verify-email"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"verify-email"
+							]
 						},
 						"description": "Gửi email xác thực tài khoản kèm mã OTP (Ở chế độ Live cần truyền otp hoặc verifyUrl; ở Sandbox có thể bỏ trống để tự sinh)."
 					},
@@ -74,8 +86,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/password-reset",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "password-reset"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"password-reset"
+							]
 						},
 						"description": "Gửi email khôi phục mật khẩu có liên kết đặt lại và thời hạn hết hạn 5 phút (mặc định)."
 					},
@@ -97,8 +115,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/send",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "send"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"send"
+							]
 						},
 						"description": "Gửi email HTML định dạng sẵn theo template của Gateway."
 					},
@@ -120,8 +144,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/send",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "send"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"send"
+							]
 						},
 						"description": "Gửi email hành động tương tác (bảng chi tiết, nhãn trạng thái và 2 nút bấm Duyệt / Từ chối)."
 					},
@@ -143,8 +173,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/send",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "send"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"send"
+							]
 						},
 						"description": "Gửi email bất đồng bộ qua Gateway. Phản hồi 202 Accepted ngay lập tức."
 					},
@@ -166,8 +202,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/send",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "send"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"send"
+							]
 						},
 						"description": "Demo khả năng chặn email sai định dạng hoặc thiếu nội dung của Validator."
 					},
@@ -180,8 +222,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/mails",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "mails"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"mails"
+							]
 						},
 						"description": "Lấy danh sách các email ảo đã lưu trữ trong bộ nhớ RAM ở chế độ Sandbox."
 					},
@@ -194,8 +242,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/mails",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "mails"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"mails"
+							]
 						},
 						"description": "Dọn dẹp làm trống hòm thư Sandbox."
 					},
@@ -213,8 +267,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/queue/stats",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "queue", "stats"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"queue",
+								"stats"
+							]
 						},
 						"description": "Truy vấn thống kê hiệu năng hàng đợi (Queue SLA metrics, độ trễ, số job active/retry) và trạng thái Circuit Breaker."
 					},
@@ -227,8 +288,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/queue/dlq",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "queue", "dlq"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"queue",
+								"dlq"
+							]
 						},
 						"description": "Lấy danh sách các email bị lỗi sau 3 lần thử lại nằm trong Dead-Letter Queue."
 					},
@@ -241,8 +309,17 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/queue/dlq/:jobId/retry",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "queue", "dlq", ":jobId", "retry"],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"queue",
+								"dlq",
+								":jobId",
+								"retry"
+							],
 							"variable": [
 								{
 									"key": "jobId",
@@ -262,8 +339,15 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/queue/dlq",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "queue", "dlq"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"queue",
+								"dlq"
+							]
 						},
 						"description": "Xóa toàn bộ các job hỏng trong Dead-Letter Queue."
 					},
@@ -281,8 +365,14 @@
 						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/config",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "config"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"config"
+							]
 						},
 						"description": "Lấy chế độ hiện tại (SANDBOX / LIVE_GMAIL) và trạng thái kết nối Gmail."
 					},
@@ -304,8 +394,15 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/config/mode",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "config", "mode"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"config",
+								"mode"
+							]
 						},
 						"description": "Chuyển đổi giữa chế độ SANDBOX và LIVE_GMAIL."
 					},
@@ -323,14 +420,91 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"user\": \"your_email@gmail.com\",\n  \"appPassword\": \"xxxx xxxx xxxx xxxx\",\n  \"webhookUrl\": \"http://localhost:4000/api/email-received\"\n}"
+							"raw": "{\n  \"user\": \"your_email@gmail.com\",\n  \"appPassword\": \"xxxx xxxx xxxx xxxx\",\n  \"webhookUrl\": \"http://localhost:4000/api/webhook/email-reply\",\n  \"webhookSecret\": \"sec_seminar_webhook_key\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/config/credentials",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "config", "credentials"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"config",
+								"credentials"
+							]
 						},
-						"description": "Cập nhật Email và App Password 16 ký tự của Google cho chế độ Live."
+						"description": "Cập nhật Email, App Password, Webhook URL và Webhook Secret cho chế độ Live."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Two-Way Reply & Webhook (IMAP Hub)",
+			"item": [
+				{
+					"name": "1. Simulate Manager Reply (Sandbox Reply API)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mailId\": \"ID_EMAIL_TRONG_SANDBOX\",\n  \"from\": \"manager@demo.local\",\n  \"replyText\": \"Duyệt đơn nhé em!\\n\\nVào Thứ 5, 29 thg 10... <bot@demo.local> đã viết:\\n> Nội dung thư cũ được cắt sạch\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/sandbox/reply",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sandbox",
+								"reply"
+							]
+						},
+						"description": "Giả lập Quản lý bấm Reply Duyệt hoặc Từ chối trong Sandbox (chạy qua đúng text-cleaner và Webhook Dispatcher như Live IMAP)."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Trigger Leave App Webhook Directly",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Webhook-Secret",
+								"value": "sec_seminar_webhook_key"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"email.reply.received\",\n  \"timestamp\": \"2026-10-29T11:44:37.529Z\",\n  \"data\": {\n    \"from\": \"manager@demo.local\",\n    \"subject\": \"Re: [Đơn Xin Nghỉ Phép #lv_123456789abc] Cần phê duyệt\",\n    \"replyText\": \"Duyệt\"\n  }\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/webhook/email-reply",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"webhook",
+								"email-reply"
+							]
+						},
+						"description": "Gọi trực tiếp Webhook Consumer của ứng dụng Leave App (cổng 4000) với header X-Webhook-Secret."
 					},
 					"response": []
 				}

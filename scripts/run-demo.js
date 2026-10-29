@@ -14,7 +14,7 @@ const rootDir = path.resolve(__dirname, '..');
 const sharedWebhookSecret = process.env.WEBHOOK_SECRET || 'sec_seminar_webhook_key';
 const sharedWebhookUrl = process.env.WEBHOOK_URL || 'http://localhost:4000/api/webhook/email-reply';
 
-console.log(' ĐANG KHỞI ĐỘNG HỆ THỐNG DEMO DUYỆT ĐƠN NGHỈ PHÉP CỦA TMT COMPANY (HAI CHIỀU SMTP & IMAP)');
+console.log(' ĐANG KHỞI ĐỘNG HỆ THỐNG DEMO DUYỆT ĐƠN NGHỈ PHÉP CỦA TMT COMPANY');
 
 // 1. Khởi động Email Gateway (Cổng 3000)
 const emailProc = spawn(process.execPath, [path.join(rootDir, 'src', 'server.js')], {

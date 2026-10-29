@@ -27,7 +27,7 @@ function cleanReplyText(rawText) {
     /^\s*wrote:\s*$/i,                        // wrote: (khi Gmail tự ngắt sang dòng tiếp theo)
     /^\s*---+\s*Original Message\s*---+/i,     // -----Original Message-----
     /^\s*---+\s*Tin nhắn gốc\s*---+/i,         // -----Tin nhắn gốc-----
-    /^\s*_{10,}/,                              // ________________________________ (Outlook separator)
+    /^\s*_{10,}/,                              // (Outlook separator)
     /^\s*From:\s+.+$/i,                        // From: sender@domain
     /^\s*Sent:\s+.+$/i                         // Sent: date
   ];

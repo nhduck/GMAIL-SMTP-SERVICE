@@ -88,8 +88,7 @@ module.exports = {
           { label: 'Thời gian nghỉ', value: `Từ ${leave.startDate} đến ${leave.endDate} (${leave.days} ngày)` },
           { label: 'Lý do xin nghỉ', value: leave.reason },
           { label: 'Thời điểm tạo', value: new Date(leave.createdAt).toLocaleString('vi-VN') }
-        ],
-        footer: '💡 HƯỚNG DẪN PHÊ DUYỆT TRỰC TIẾP TRÊN EMAIL (KHÔNG CẦN TRÌNH DUYỆT WEB): Hãy bấm nút Reply (Trả lời) thư này, gõ "Duyệt" hoặc "Từ chối" rồi bấm Gửi. Hệ thống sẽ tự động bắt phản hồi qua IMAP và cập nhật tức thì.'
+        ]
       }
     });
   },

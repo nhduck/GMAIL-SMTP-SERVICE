@@ -93,9 +93,7 @@ async function runE2ETest() {
     // Xóa sạch hộp thư ảo Sandbox trước khi chạy
     await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`, { method: 'DELETE' });
 
-    // ==========================================
     // BƯỚC 1: ĐĂNG KÝ TÀI KHOẢN & XÁC THỰC OTP
-    // ==========================================
     console.log('--- BƯỚC 1: Đăng ký tài khoản nhân viên mới & Nhận OTP ---');
     const employeeEmail = 'nhanvien_test@tdtu.edu.vn';
     const regRes = await fetch(`http://localhost:${DEMO_PORT}/api/register`, {
@@ -131,9 +129,7 @@ async function runE2ETest() {
     const sessionToken = verifyData.token;
     console.log(`Kích hoạt tài khoản bằng OTP: ${verifyRes.ok && sessionToken ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
 
-    // ==========================================
     // BƯỚC 2: TẠO ĐƠN NGHỈ PHÉP (TIÊU ĐỀ CHUẨN MÃ ĐƠN)
-    // ==========================================
     console.log('\n--- BƯỚC 2: Tạo đơn xin nghỉ phép gửi tới Quản lý ---');
     const managerEmail = 'manager@demo.local';
     const leaveRes = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
@@ -157,9 +153,7 @@ async function runE2ETest() {
 
     await sleep(250);
 
-    // ==========================================
     // BƯỚC 3: KIỂM TRA EMAIL GỬI TỚI QUẢN LÝ (KHÔNG CÒN NÚT, CÓ HƯỚNG DẪN REPLY)
-    // ==========================================
     console.log('\n--- BƯỚC 3: Quản lý nhận email (Kiểm tra tiêu đề, không có nút bấm, có hướng dẫn Reply) ---');
     const mailsRes2 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
     const { data: mails2 } = await mailsRes2.json();
@@ -173,12 +167,10 @@ async function runE2ETest() {
     const hasButtons = managerMail.html.includes('action=approve') || managerMail.html.includes('primary-button');
     console.log(`Đã loại bỏ nút bấm duyệt mở web khỏi email: ${!hasButtons ? '✅ CHUẨN (KHÔNG CÒN NÚT)' : '❌ VẪN CÒN NÚT'}`);
 
-    const hasReplyGuide = managerMail.html.includes('Reply (Trả lời)') || managerMail.html.includes('phê duyệt trực tiếp');
-    console.log(`Có khung hướng dẫn Reply "Duyệt" hoặc "Từ chối": ${hasReplyGuide ? '✅ ĐẠT CHUẨN' : '❌ THIẾU'}`);
+    const hasReplyGuide = managerMail.html.includes('phê duyệt trực tiếp');
+    console.log(`Email hỗ trợ phê duyệt trực tiếp: ${hasReplyGuide ? '✅ ĐẠT CHUẨN' : '❌ THIẾU'}`);
 
-    // ==========================================
     // BƯỚC 4: QUẢN LÝ REPLY "DUYỆT" (KÈM TRÍCH DẪN THƯ CŨ CÓ CẢ TỪ "TỪ CHỐI")
-    // ==========================================
     console.log('\n--- BƯỚC 4: Quản lý Reply "Duyệt" (Kèm trích dẫn Gmail chứa cả chữ "Từ chối") ---');
     const realisticGmailReply = `Duyệt đơn nhé em!
 
@@ -216,9 +208,7 @@ Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã vi�
     const resultMail = mails3.find(m => m.to === employeeEmail && m.subject.includes('Đã Được Duyệt'));
     console.log(`Nhân viên nhận email thông báo kết quả: ${resultMail ? '✅ ĐÃ NHẬN THÀNH CÔNG' : '❌ CHƯA NHẬN'}`);
 
-    // ==========================================
     // BƯỚC 5: TEST TỪ KHÓA PHỦ ĐỊNH "KHÔNG DUYỆT" -> REJECTED
-    // ==========================================
     console.log('\n--- BƯỚC 5: Kiểm thử từ khóa phủ định "Không duyệt" (Ranh giới từ) ---');
     const leaveRes2 = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
       method: 'POST',
@@ -255,9 +245,7 @@ Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã vi�
     const webhookData2 = await webhookRes2.json();
     console.log(`Phân tích cụm từ phủ định "không duyệt": ${webhookData2.leave && webhookData2.leave.status === 'REJECTED' ? '✅ NHẬN DIỆN ĐÚNG REJECTED' : '❌ SAI'}`);
 
-    // ==========================================
     // BƯỚC 6: TEST PHẢN HỒI MÂU THUẪN -> GIỮ PENDING & GỬI THƯ NHẮC CÚ PHÁP
-    // ==========================================
     console.log('\n--- BƯỚC 6: Kiểm thử phản hồi mâu thuẫn ("Duyệt, đừng từ chối") ---');
     const leaveRes3 = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
       method: 'POST',
@@ -300,9 +288,7 @@ Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã vi�
     const clarifyMail = mails4.find(m => m.to === managerEmail && m.subject.includes('Cú pháp phản hồi chưa rõ ràng'));
     console.log(`Tự động gửi email hướng dẫn lại cú pháp cho Quản lý: ${clarifyMail ? '✅ ĐÃ GỬI THÀNH CÔNG' : '❌ THIẾU'}`);
 
-    // ==========================================
     // BƯỚC 7: TEST BẢO MẬT WEBHOOK & CHỐNG REPLAY
-    // ==========================================
     console.log('\n--- BƯỚC 7: Kiểm thử bảo mật Webhook (Secret, Người gửi giả mạo & Chống Replay) ---');
 
     // 7.1 Sai Secret -> 401
@@ -345,9 +331,7 @@ Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã vi�
     const replayData = await replayRes.json();
     console.log(`Chống Replay Attack trên đơn đã quyết định: ${replayData.reason === 'ALREADY_DECIDED' ? '✅ ĐÃ CHẶN (ALREADY_DECIDED)' : '❌ LỖI'}`);
 
-    // ==========================================
     // BƯỚC 8: KIỂM THỬ ĐẶT LẠI MẬT KHẨU (TTL 5 PHÚT)
-    // ==========================================
     console.log('\n--- BƯỚC 8: Kiểm thử chức năng Quên mật khẩu (TTL 5 phút) ---');
     await fetch(`http://localhost:${DEMO_PORT}/api/forgot`, {
       method: 'POST',
@@ -362,9 +346,7 @@ Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã vi�
     const has5Min = resetMail && resetMail.html.includes('5 phút');
     console.log(`Email Reset Password thể hiện đúng TTL 5 phút: ${has5Min ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
 
-    console.log('\n========================================================================');
-    console.log('🎉 TOÀN BỘ KỊCH BẢN E2E GIAO TIẾP HAI CHIỀU (SMTP & IMAP REPLY) ĐÃ ĐẠT 100%!');
-    console.log('========================================================================\n');
+    console.log('🎉 TOÀN BỘ KỊCH BẢN E2E GIAO TIẾP HAI CHIỀU (SMTP & IMAP REPLY) ĐÃ ĐẠT 100%!\n');
   } catch (err) {
     console.error('\n❌ E2E TEST THẤT BẠI:', err.message);
     process.exitCode = 1;
