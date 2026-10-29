@@ -69,9 +69,9 @@ module.exports = {
     });
   },
 
-  // Gửi email hành động cho Quản lý phê duyệt
-  async sendLeaveRequestToManager({ managerEmail, leave, approveUrl, rejectUrl }) {
-    const subject = 'Đơn Xin Nghỉ Phép Cần Phê Duyệt';
+  // Gửi email yêu cầu phê duyệt cho Quản lý (chuẩn 2 chiều: Quản lý Reply trực tiếp trong Gmail)
+  async sendLeaveRequestToManager({ managerEmail, leave }) {
+    const subject = `[Đơn Xin Nghỉ Phép #${leave.id}] Cần phê duyệt`;
     return await requestEmailService('/api/v1/send', {
       to: managerEmail,
       subject,
@@ -80,17 +80,37 @@ module.exports = {
         appName: 'TMT Company',
         title: subject,
         greeting: 'Chào Quản lý,',
-        intro: `Nhân viên ${leave.employeeName} (${leave.employeeEmail}) vừa gửi một đơn xin nghỉ phép mới trên hệ thống:`,
+        intro: `Nhân viên ${leave.employeeName} (${leave.employeeEmail}) vừa gửi đơn xin nghỉ phép mới trên hệ thống. Bạn có thể phê duyệt trực tiếp ngay trên email:`,
         badge: { text: 'CHỜ PHÊ DUYỆT', tone: 'warning' },
         details: [
+          { label: 'Mã đơn nghỉ phép', value: `#${leave.id}` },
           { label: 'Nhân viên yêu cầu', value: `${leave.employeeName} (${leave.employeeEmail})` },
           { label: 'Thời gian nghỉ', value: `Từ ${leave.startDate} đến ${leave.endDate} (${leave.days} ngày)` },
           { label: 'Lý do xin nghỉ', value: leave.reason },
           { label: 'Thời điểm tạo', value: new Date(leave.createdAt).toLocaleString('vi-VN') }
+        ]
+      }
+    });
+  },
+
+  // Gửi email nhắc cú pháp khi Quản lý Reply câu từ mơ hồ hoặc mâu thuẫn
+  async sendClarificationEmail({ managerEmail, leaveId, receivedText }) {
+    const subject = `Re: [Đơn Xin Nghỉ Phép #${leaveId}] Cú pháp phản hồi chưa rõ ràng`;
+    return await requestEmailService('/api/v1/send', {
+      to: managerEmail,
+      subject,
+      template: 'action-email',
+      variables: {
+        appName: 'TMT Company',
+        title: subject,
+        greeting: 'Chào Quản lý,',
+        intro: `Hệ thống vừa nhận được phản hồi từ bạn đối với đơn #${leaveId}: "${receivedText || ''}". Tuy nhiên, nội dung phản hồi chưa xác định rõ ý định phê duyệt hay từ chối.`,
+        badge: { text: 'CẦN XÁC NHẬN LẠI', tone: 'warning' },
+        details: [
+          { label: 'Mã đơn nghỉ phép', value: `#${leaveId}` },
+          { label: 'Cú pháp hợp lệ', value: 'Chỉ cần gõ: "Duyệt" hoặc "Từ chối"' }
         ],
-        primaryButton: { text: 'Duyệt Đơn', url: approveUrl },
-        secondaryButton: { text: 'Từ Chối', url: rejectUrl },
-        footer: 'Liên kết trên chỉ mở trang xác nhận quyết định an toàn (CSRF-Safe) và có hiệu lực dùng 1 lần trong 24 giờ.'
+        footer: 'Vui lòng bấm Reply (Trả lời) email này và chỉ gõ từ khóa "Duyệt" hoặc "Từ chối" để hệ thống tự động xử lý.'
       }
     });
   },
@@ -98,7 +118,10 @@ module.exports = {
   // Gửi thông báo kết quả phê duyệt về cho Nhân viên
   async sendLeaveResultToEmployee({ employeeEmail, leave, action }) {
     const isApproved = action === 'APPROVE';
-    const subject = isApproved ? 'Đơn Xin Nghỉ Phép Đã Được Duyệt' : 'Đơn Xin Nghỉ Phép Đã Bị Từ Chối';
+    const subject = isApproved
+      ? `[Đơn Xin Nghỉ Phép #${leave.id}] Đã Được Duyệt`
+      : `[Đơn Xin Nghỉ Phép #${leave.id}] Đã Bị Từ Chối`;
+
     return await requestEmailService('/api/v1/send', {
       to: employeeEmail,
       subject,
@@ -108,16 +131,17 @@ module.exports = {
         title: subject,
         greeting: `Chào ${leave.employeeName},`,
         intro: isApproved
-          ? 'Đơn xin nghỉ phép của bạn đã được quản lý bộ phận phê duyệt thành công.'
-          : 'Đơn xin nghỉ phép của bạn đã bị từ chối. Vui lòng liên hệ quản lý trực tiếp nếu cần thêm thông tin.',
+          ? 'Đơn xin nghỉ phép của bạn đã được quản lý bộ phận phê duyệt thành công qua phản hồi Email.'
+          : 'Đơn xin nghỉ phép của bạn đã bị từ chối qua phản hồi Email. Vui lòng liên hệ quản lý nếu cần thêm thông tin.',
         badge: isApproved
           ? { text: 'ĐÃ PHÊ DUYỆT', tone: 'success' }
           : { text: 'BỊ TỪ CHỐI', tone: 'danger' },
         details: [
-          { label: 'Mã đơn nghỉ phép', value: leave.id },
+          { label: 'Mã đơn nghỉ phép', value: `#${leave.id}` },
           { label: 'Thời gian nghỉ', value: `Từ ${leave.startDate} đến ${leave.endDate} (${leave.days} ngày)` },
           { label: 'Lý do ban đầu', value: leave.reason },
-          { label: 'Thời điểm xử lý', value: new Date(leave.decidedAt || Date.now()).toLocaleString('vi-VN') }
+          { label: 'Thời điểm xử lý', value: new Date(leave.decidedAt || Date.now()).toLocaleString('vi-VN') },
+          { label: 'Phương thức', value: 'Phê duyệt trực tiếp qua Email Reply (IMAP)' }
         ],
         footer: 'Email kết quả tự động từ Cổng Thông Tin Nhân Sự TMT Company.'
       }

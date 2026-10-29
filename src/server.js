@@ -1,6 +1,6 @@
 /**
  * Gmail-SMTP-Service: Hybrid Email-as-a-Service Gateway
- * Entrypoint máy chủ chính tích hợp Graceful Shutdown & Dead-Letter Queue
+ * Entrypoint máy chủ chính tích hợp Graceful Shutdown, Dead-Letter Queue & Dịch vụ IMAP hai chiều
  */
 
 require('dotenv').config();
@@ -14,6 +14,8 @@ const mailController = require('./api/mail.controller');
 const configController = require('./api/config.controller');
 const queue = require('./core/queue');
 const smtpLive = require('./core/smtp-live');
+const imapService = require('./core/imap-service');
+const modeManager = require('./core/mode-manager');
 const { requireApiKey, requireAdmin } = require('./core/security');
 
 const app = express();
@@ -55,6 +57,9 @@ queue.setEventListener((event) => {
   broadcastWs(event);
 });
 
+// Đồng bộ WebSocket Broadcast vào dịch vụ IMAP
+imapService.setBroadcast(broadcastWs);
+
 // REST API Routes
 app.get('/api/v1/health', (req, res) => {
   res.json({
@@ -73,9 +78,10 @@ app.get('/api/v1/templates', mailController.getTemplates);
 app.post('/api/v1/send', mailController.sendMail);
 app.get('/api/v1/queue/stats', mailController.getQueueStats);
 
-// Hộp thư ảo chứa OTP / link reset của người dùng -> chỉ quản trị viên (localhost hoặc có API Key) được xem
+// Hộp thư ảo chứa OTP / link reset / phản hồi thư -> chỉ quản trị viên (localhost hoặc có API Key) được xem & thao tác
 app.get('/api/v1/mails', requireAdmin, mailController.getMails);
 app.delete('/api/v1/mails', requireAdmin, mailController.clearMails);
+app.post('/api/v1/sandbox/reply', requireAdmin, mailController.sandboxReply);
 
 // Dead-Letter Queue (DLQ) Endpoints (quản trị)
 app.get('/api/v1/queue/dlq', requireAdmin, mailController.getDlq);
@@ -92,18 +98,11 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'Kết nối WebSocket thành công tới Email Hub.' }));
 });
 
-// Khởi chạy IMAP Listener (Tính năng mở rộng - tắt mặc định để các bạn cài đặt nhẹ và nhanh nhất)
-if (process.env.ENABLE_INBOUND === 'true') {
-  try {
-    const imapListener = require('./core/imap-listener');
-    const webhookDispatcher = require('./core/webhook-dispatcher');
-    imapListener.startListening((newMail) => {
-      broadcastWs({ type: 'INBOUND_MAIL', data: newMail });
-      webhookDispatcher.dispatch(newMail);
-    });
-  } catch (err) {
-    console.warn('[IMAP Optional] Không thể tải module IMAP:', err.message);
-  }
+// Tự động khởi chạy IMAP Listener nếu cấu hình khởi đầu là LIVE_GMAIL hoặc ENABLE_INBOUND=true
+if (modeManager.getMode() === 'LIVE_GMAIL' || process.env.ENABLE_INBOUND === 'true') {
+  imapService.syncWithMode('LIVE_GMAIL').catch((err) => {
+    console.warn('[IMAP Startup Warning]', err.message);
+  });
 }
 
 // Khởi động Server
@@ -137,15 +136,10 @@ async function handleShutdown(signal) {
       // 2. Chờ các worker đang gửi dở hoàn thành nốt
       await queue.drainActiveWorkers(8000);
 
-      // 3. Đóng connection pool SMTP và IMAP (nếu có)
+      // 3. Đóng connection pool SMTP và dừng dịch vụ IMAP
       smtpLive.resetTransporter();
-      if (process.env.ENABLE_INBOUND === 'true') {
-        try {
-          const imapListener = require('./core/imap-listener');
-          await imapListener.stopListening();
-        } catch (e) { }
-      }
-      console.log('✓ [Server] Đã ngắt kết nối SMTP an toàn.');
+      await imapService.stop();
+      console.log('✓ [Server] Đã ngắt kết nối SMTP và IMAP an toàn.');
 
       // 4. Đóng toàn bộ client WebSocket
       wss.clients.forEach((client) => client.close());

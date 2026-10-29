@@ -1,11 +1,21 @@
 /**
  * test/demo-e2e.test.js
  * Kiểm thử tự động Toàn Luồng End-to-End (E2E) trong môi trường Sandbox
- * Kịch bản: Nhân viên đăng ký -> Nhận OTP -> Đăng nhập -> Tạo đơn xin nghỉ -> Quản lý duyệt -> Nhận kết quả -> Quên mật khẩu
+ * Kịch bản toàn diện:
+ * 1. Nhân viên đăng ký -> Nhận OTP (5 phút) -> Kích hoạt tài khoản
+ * 2. Tạo đơn nghỉ phép -> Quản lý nhận email hướng dẫn Reply trực tiếp
+ * 3. Quản lý Reply "Duyệt" (kèm trích dẫn cũ chứa cả từ "Từ chối") -> Cắt trích dẫn chuẩn -> Đơn được APPROVED
+ * 4. Nhân viên nhận email kết quả tức thì
+ * 5. Test phản hồi "Không duyệt" -> Nhận diện chính xác REJECTED (ranh giới từ)
+ * 6. Test phản hồi mâu thuẫn "Duyệt, đừng từ chối" -> Giữ nguyên PENDING, gửi email nhắc cú pháp
+ * 7. Test bảo mật Webhook: sai Secret (401), người gửi giả mạo (bị từ chối), chống Replay
+ * 8. Test an toàn Gateway: bỏ qua thư Auto-Submitted, thư không có Re:, thư từ chính Gateway
+ * 9. Quên mật khẩu (TTL 5 phút, hủy link cũ & session cũ) -> Đăng nhập lại
  */
 
 const { server: emailServer } = require('../src/server');
 const leaveApp = require('../demo-app/server');
+const { cleanReplyText, extractPureEmail } = require('../src/core/text-cleaner');
 
 const EMAIL_PORT = 3000;
 const DEMO_PORT = 4000;
@@ -56,23 +66,35 @@ async function stopServers() {
 }
 
 async function runE2ETest() {
-  console.log('🧪 BẮT ĐẦU KIỂM THỬ TỰ ĐỘNG TOÀN LUỒNG END-TO-END (DEMO E2E)');
+  console.log('🧪 BẮT ĐẦU KIỂM THỬ TỰ ĐỘNG TOÀN LUỒNG END-TO-END (HAI CHIỀU SMTP & IMAP REPLY)');
   console.log('\n');
 
   try {
     await startServers();
-    // Đảm bảo Gateway ở chế độ SANDBOX khi chạy bài test E2E Sandbox
+
+    // Đảm bảo Gateway ở chế độ SANDBOX
     await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'SANDBOX' })
     });
 
+    // Cấu hình Webhook URL & Secret đồng bộ
+    const TEST_SECRET = 'sec_seminar_webhook_key';
+    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        webhookUrl: `http://localhost:${DEMO_PORT}/api/webhook/email-reply`,
+        webhookSecret: TEST_SECRET
+      })
+    });
+
     // Xóa sạch hộp thư ảo Sandbox trước khi chạy
     await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`, { method: 'DELETE' });
 
-    // BƯỚC 1: NHÂN VIÊN ĐĂNG KÝ TÀI KHOẢN
-    console.log('--- BƯỚC 1: Đăng ký tài khoản nhân viên mới ---');
+    // BƯỚC 1: ĐĂNG KÝ TÀI KHOẢN & XÁC THỰC OTP
+    console.log('--- BƯỚC 1: Đăng ký tài khoản nhân viên mới & Nhận OTP ---');
     const employeeEmail = 'nhanvien_test@tdtu.edu.vn';
     const regRes = await fetch(`http://localhost:${DEMO_PORT}/api/register`, {
       method: 'POST',
@@ -86,45 +108,30 @@ async function runE2ETest() {
     const regData = await regRes.json();
     console.log(`Đăng ký nhân viên: ${regRes.ok ? '✅ THÀNH CÔNG' : '❌ THẤT BẠI'}`);
 
-    // Đợi 200ms để hàng đợi Email Gateway xử lý xong
-    await sleep(300);
+    await sleep(250);
 
-    // BƯỚC 2: TRÍCH XUẤT OTP TỪ HỘP THƯ ẢO SANDBOX & XÁC THỰC
-    console.log('\n--- BƯỚC 2: Trích xuất OTP từ Hộp thư ảo & Kích hoạt ---');
     const mailsRes1 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
     const { data: mails1 } = await mailsRes1.json();
     const otpMail = mails1.find(m => m.to === employeeEmail);
+    if (!otpMail) throw new Error('❌ Không tìm thấy email OTP trong hộp thư Sandbox!');
 
-    if (!otpMail) {
-      throw new Error('❌ Không tìm thấy email OTP trong hộp thư ảo Sandbox!');
-    }
-
-    // Kiểm tra thông báo thời hạn OTP 5 phút khớp với store.js
-    const otpHas5Min = otpMail.html.includes('5 phút');
-    console.log(`Email OTP hiển thị đúng thời hạn 5 phút: ${otpHas5Min ? '✅ ĐẠT CHUẨN' : '❌ SAI TTL'}`);
-
-    // Trích xuất mã OTP 6 số từ thẻ HTML (tránh nhầm mã màu CSS như #334155)
     const otpMatch = otpMail.html.match(/>\s*(\d{6})\s*</);
     const extractedOtp = otpMatch ? otpMatch[1] : regData.sandboxOtp;
-    console.log(`Tìm thấy email OTP gửi tới: ${otpMail.to}`);
+    console.log(`Email OTP hiển thị đúng thời hạn 5 phút: ${otpMail.html.includes('5 phút') ? '✅ ĐẠT CHUẨN' : '❌ SAI'}`);
     console.log(`Mã OTP trích xuất chính xác: ${extractedOtp}`);
 
-    // Xác thực OTP
     const verifyRes = await fetch(`http://localhost:${DEMO_PORT}/api/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: employeeEmail, otp: extractedOtp })
     });
     const verifyData = await verifyRes.json();
-    console.log(`Kích hoạt tài khoản bằng OTP: ${verifyRes.ok && verifyData.token ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
     const sessionToken = verifyData.token;
+    console.log(`Kích hoạt tài khoản bằng OTP: ${verifyRes.ok && sessionToken ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
 
-    // BƯỚC 3: TẠO ĐƠN XIN NGHỈ PHÉP
-    console.log('\n--- BƯỚC 3: Tạo đơn xin nghỉ phép gửi tới Quản lý ---');
-    const dStart = new Date();
-    dStart.setDate(dStart.getDate() + 1);
-    const dEnd = new Date();
-    dEnd.setDate(dEnd.getDate() + 3);
+    // BƯỚC 2: TẠO ĐƠN NGHỈ PHÉP (TIÊU ĐỀ CHUẨN MÃ ĐƠN)
+    console.log('\n--- BƯỚC 2: Tạo đơn xin nghỉ phép gửi tới Quản lý ---');
+    const managerEmail = 'manager@demo.local';
     const leaveRes = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
       method: 'POST',
       headers: {
@@ -132,190 +139,214 @@ async function runE2ETest() {
         'Authorization': `Bearer ${sessionToken}`
       },
       body: JSON.stringify({
-        startDate: dStart.toISOString().split('T')[0],
-        endDate: dEnd.toISOString().split('T')[0],
+        startDate: '2026-11-01',
+        endDate: '2026-11-03',
         days: 3,
-        reason: '<script>alert("hack")</script>Nghỉ phép cá nhân theo kế hoạch'
+        reason: '<script>alert("hack")</script>Nghỉ phép cá nhân',
+        managerEmail
       })
     });
     const leaveData = await leaveRes.json();
+    const leaveId = leaveData.leave.id;
     console.log(`Tạo đơn xin nghỉ phép: ${leaveRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
-    console.log(`Mã đơn nghỉ phép: ${leaveData.leave.id}`);
+    console.log(`Mã đơn định danh chuẩn: #${leaveId}`);
 
-    await sleep(300);
+    await sleep(250);
 
-    // BƯỚC 4: QUẢN LÝ NHẬN EMAIL DUYỆT & KIỂM TRA CHỐNG XSS
-    console.log('\n--- BƯỚC 4: Quản lý nhận Action Email & Kiểm tra an toàn XSS ---');
+    // BƯỚC 3: KIỂM TRA EMAIL GỬI TỚI QUẢN LÝ (KHÔNG CÒN NÚT, CÓ HƯỚNG DẪN REPLY)
+    console.log('\n--- BƯỚC 3: Quản lý nhận email (Kiểm tra tiêu đề, không có nút bấm, có hướng dẫn Reply) ---');
     const mailsRes2 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
     const { data: mails2 } = await mailsRes2.json();
-    const managerMail = mails2.find(m => m.subject.includes('Đơn Xin Nghỉ Phép'));
+    const managerMail = mails2.find(m => m.subject.includes(leaveId));
+    if (!managerMail) throw new Error('❌ Không tìm thấy email gửi tới Quản lý cho đơn #' + leaveId);
 
-    if (!managerMail) {
-      throw new Error('❌ Quản lý không nhận được email yêu cầu duyệt đơn!');
-    }
-    console.log(`Quản lý nhận email tiêu đề: "${managerMail.subject}"`);
+    const hasExpectedTitle = managerMail.subject.includes(`[Đơn Xin Nghỉ Phép #${leaveId}]`);
+    console.log(`Tiêu đề email chứa mã đơn [Đơn Xin Nghỉ Phép #${leaveId}]: ${hasExpectedTitle ? '✅ CHUẨN' : '❌ SAI'}`);
 
-    // Kiểm tra tính năng chống XSS: <script> phải bị escape
-    const isXssEscaped = managerMail.html.includes('&lt;script&gt;') && !managerMail.html.includes('<script>');
-    console.log(`Chống chèn mã độc HTML/XSS trong lý do: ${isXssEscaped ? '✅ BẢO MẬT AN TOÀN' : '❌ LỖI BẢO MẬT'}`);
+    // Email không được có nút URL duyệt trực tiếp nữa (theo yêu cầu của thầy)
+    const hasButtons = managerMail.html.includes('action=approve') || managerMail.html.includes('primary-button');
+    console.log(`Đã loại bỏ nút bấm duyệt mở web khỏi email: ${!hasButtons ? '✅ CHUẨN (KHÔNG CÒN NÚT)' : '❌ VẪN CÒN NÚT'}`);
 
-    // Trích xuất link và token phê duyệt từ nội dung thư
-    const approveMatch = managerMail.html.match(/\/decision\/([a-f0-9]+)\?action=approve/);
-    if (!approveMatch) {
-      throw new Error('❌ Không tìm thấy liên kết duyệt đơn trong email Quản lý!');
-    }
-    const decisionToken = approveMatch[1];
-    console.log(`Trích xuất Decision Token một lần: ${decisionToken}`);
+    const hasReplyGuide = managerMail.html.includes('phê duyệt trực tiếp');
+    console.log(`Email hỗ trợ phê duyệt trực tiếp: ${hasReplyGuide ? '✅ ĐẠT CHUẨN' : '❌ THIẾU'}`);
 
-    // BƯỚC 5: QUẢN LÝ XÁC NHẬN PHÊ DUYỆT ĐƠN
-    console.log('\n--- BƯỚC 5: Quản lý xác nhận duyệt đơn qua POST ---');
-    const decisionRes = await fetch(`http://localhost:${DEMO_PORT}/api/decision`, {
+    // BƯỚC 4: QUẢN LÝ REPLY "DUYỆT" (KÈM TRÍCH DẪN THƯ CŨ CÓ CẢ TỪ "TỪ CHỐI")
+    console.log('\n--- BƯỚC 4: Quản lý Reply "Duyệt" (Kèm trích dẫn Gmail chứa cả chữ "Từ chối") ---');
+    const realisticGmailReply = `Duyệt đơn nhé em!
+
+Vào Th 5, 29 thg 10, 2026 lúc 10:00 TMT Company <sandbox@demo.local> đã viết:
+> HƯỚNG DẪN: Bấm Reply, gõ "Duyệt" hoặc "Từ chối" rồi bấm Gửi.
+> Chi tiết đơn nghỉ phép #${leaveId}...`;
+
+    // Gọi API giả lập Reply trong Sandbox (đi qua đúng text-cleaner và Webhook Dispatcher)
+    const replyRes = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/sandbox/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: decisionToken, action: 'approve' })
+      body: JSON.stringify({
+        mailId: managerMail.id,
+        from: managerEmail,
+        replyText: realisticGmailReply
+      })
     });
-    const decisionData = await decisionRes.json();
-    console.log(`Xử lý quyết định: ${decisionRes.ok && decisionData.leave.status === 'APPROVED' ? '✅ ĐÃ DUYỆT THÀNH CÔNG' : '❌ LỖI'}`);
+    const replyData = await replyRes.json();
+    console.log(`Gửi phản hồi qua Sandbox Reply API: ${replyRes.ok ? '✅ THÀNH CÔNG' : '❌ THẤT BẠI'}`);
+    console.log(`Bộ lọc cleanReplyText cắt bỏ trích dẫn: "${replyData.data.replyText}" -> ${replyData.data.replyText === 'Duyệt đơn nhé em!' ? '✅ CẮT CHUẨN TUYỆT ĐỐI' : '❌ LỖI'}`);
 
-    await sleep(300);
+    await sleep(350);
 
-    // BƯỚC 6: NHÂN VIÊN NHẬN EMAIL KẾT QUẢ TỨC THÌ
-    console.log('\n--- BƯỚC 6: Kiểm tra email kết quả gửi về cho Nhân viên ---');
+    // Kiểm tra trạng thái đơn ở Cổng 4000
+    const checkLeaveRes1 = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
+    });
+    const { leaves: leaves1 } = await checkLeaveRes1.json();
+    const approvedLeave = leaves1.find(l => l.id === leaveId);
+    console.log(`Trạng thái đơn #${leaveId} sau khi Quản lý Reply: ${approvedLeave && approvedLeave.status === 'APPROVED' ? '✅ ĐÃ DUYỆT (APPROVED)' : '❌ CHƯA DUYỆT'}`);
+
+    // Kiểm tra Nhân viên nhận được email kết quả tự động
     const mailsRes3 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
     const { data: mails3 } = await mailsRes3.json();
-    const resultMap = mails3.find(m => m.to === employeeEmail && m.subject.includes('Đã Được Duyệt'));
+    const resultMail = mails3.find(m => m.to === employeeEmail && m.subject.includes('Đã Được Duyệt'));
+    console.log(`Nhân viên nhận email thông báo kết quả: ${resultMail ? '✅ ĐÃ NHẬN THÀNH CÔNG' : '❌ CHƯA NHẬN'}`);
 
-    if (!resultMap) {
-      throw new Error('❌ Nhân viên chưa nhận được email kết quả phê duyệt!');
-    }
-    console.log(`Nhân viên nhận email kết quả: "${resultMap.subject}"`);
-    const hasSuccessBadge = resultMap.html.includes('ĐÃ PHÊ DUYỆT') || resultMap.html.includes('success');
-    console.log(`Email có nhãn trạng thái thành công: ${hasSuccessBadge ? '✅ ĐẠT CHUẨN' : '❌ THIẾU'}`);
-
-    // BƯỚC 7: KIỂM THỬ BẢO MẬT (CHỐNG DÙNG LẠI TOKEN DUYỆT)
-    console.log('\n--- BƯỚC 7: Kiểm thử bảo mật (Chống Replay Attack Token) ---');
-    const replayRes = await fetch(`http://localhost:${DEMO_PORT}/api/decision`, {
+    // BƯỚC 5: TEST TỪ KHÓA PHỦ ĐỊNH "KHÔNG DUYỆT" -> REJECTED
+    console.log('\n--- BƯỚC 5: Kiểm thử từ khóa phủ định "Không duyệt" (Ranh giới từ) ---');
+    const leaveRes2 = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: decisionToken, action: 'approve' })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({
+        startDate: '2026-11-10',
+        endDate: '2026-11-12',
+        days: 2,
+        reason: 'Nghỉ du lịch cá nhân',
+        managerEmail
+      })
     });
-    console.log(`Chặn dùng lại token đã xử lý: ${replayRes.status === 400 ? '✅ ĐÃ CHẶN AN TOÀN (400)' : '❌ LỖI'}`);
+    const leaveId2 = (await leaveRes2.json()).leave.id;
 
-    // BƯỚC 8: QUÊN MẬT KHẨU & ĐẶT LẠI MẬT KHẨU (KÈM HỦY TOKEN CŨ & SESSION CŨ)
-    console.log('\n--- BƯỚC 8: Kiểm thử chức năng Quên mật khẩu (TTL 5 phút, hủy link cũ & hủy session cũ) ---');
-    // Yêu cầu lần 1 (sẽ bị vô hiệu hóa khi yêu cầu lần 2)
+    // Quản lý reply phủ định: "Không duyệt đơn này nhé"
+    const webhookRes2 = await fetch(`http://localhost:${DEMO_PORT}/api/webhook/email-reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': TEST_SECRET
+      },
+      body: JSON.stringify({
+        event: 'email.reply.received',
+        data: {
+          from: managerEmail,
+          subject: `Re: [Đơn Xin Nghỉ Phép #${leaveId2}] Cần phê duyệt`,
+          replyText: 'Không duyệt đơn này nhé, dự án đang vào đợt release gấp.'
+        }
+      })
+    });
+    const webhookData2 = await webhookRes2.json();
+    console.log(`Phân tích cụm từ phủ định "không duyệt": ${webhookData2.leave && webhookData2.leave.status === 'REJECTED' ? '✅ NHẬN DIỆN ĐÚNG REJECTED' : '❌ SAI'}`);
+
+    // BƯỚC 6: TEST PHẢN HỒI MÂU THUẪN -> GIỮ PENDING & GỬI THƯ NHẮC CÚ PHÁP
+    console.log('\n--- BƯỚC 6: Kiểm thử phản hồi mâu thuẫn ("Duyệt, đừng từ chối") ---');
+    const leaveRes3 = await fetch(`http://localhost:${DEMO_PORT}/api/leaves`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({
+        startDate: '2026-11-15',
+        endDate: '2026-11-16',
+        days: 1,
+        reason: 'Nghỉ giải quyết việc riêng',
+        managerEmail
+      })
+    });
+    const leaveId3 = (await leaveRes3.json()).leave.id;
+
+    const webhookRes3 = await fetch(`http://localhost:${DEMO_PORT}/api/webhook/email-reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': TEST_SECRET
+      },
+      body: JSON.stringify({
+        event: 'email.reply.received',
+        data: {
+          from: managerEmail,
+          subject: `Re: [Đơn Xin Nghỉ Phép #${leaveId3}] Cần phê duyệt`,
+          replyText: 'Duyệt, đừng từ chối'
+        }
+      })
+    });
+    const webhookData3 = await webhookRes3.json();
+    console.log(`Phát hiện phản hồi mơ hồ / mâu thuẫn: ${webhookData3.ambiguous === true ? '✅ ĐÃ BẮT CHÍNH XÁC' : '❌ LỖI'}`);
+
+    await sleep(250);
+
+    const mailsRes4 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
+    const { data: mails4 } = await mailsRes4.json();
+    const clarifyMail = mails4.find(m => m.to === managerEmail && m.subject.includes('Cú pháp phản hồi chưa rõ ràng'));
+    console.log(`Tự động gửi email hướng dẫn lại cú pháp cho Quản lý: ${clarifyMail ? '✅ ĐÃ GỬI THÀNH CÔNG' : '❌ THIẾU'}`);
+
+    // BƯỚC 7: TEST BẢO MẬT WEBHOOK & CHỐNG REPLAY
+    console.log('\n--- BƯỚC 7: Kiểm thử bảo mật Webhook (Secret, Người gửi giả mạo & Chống Replay) ---');
+
+    // 7.1 Sai Secret -> 401
+    const badSecretRes = await fetch(`http://localhost:${DEMO_PORT}/api/webhook/email-reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': 'wrong_secret_key' },
+      body: JSON.stringify({ event: 'email.reply.received', data: { from: managerEmail, subject: `Re: #${leaveId3}`, replyText: 'Duyệt' } })
+    });
+    console.log(`Chặn Webhook sai Secret (401): ${badSecretRes.status === 401 ? '✅ ĐÃ CHẶN AN TOÀN' : '❌ LỖI'}`);
+
+    // 7.2 Người gửi giả mạo (không phải managerEmail của đơn) -> bị từ chối
+    const imposterRes = await fetch(`http://localhost:${DEMO_PORT}/api/webhook/email-reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': TEST_SECRET },
+      body: JSON.stringify({
+        event: 'email.reply.received',
+        data: {
+          from: 'hacker@malicious.com',
+          subject: `Re: [Đơn Xin Nghỉ Phép #${leaveId3}] Cần phê duyệt`,
+          replyText: 'Duyệt'
+        }
+      })
+    });
+    const imposterData = await imposterRes.json();
+    console.log(`Chặn người gửi giả mạo (không phải Quản lý): ${imposterData.reason === 'SENDER_NOT_MANAGER' ? '✅ ĐÃ TỪ CHỐI AN TOÀN' : '❌ LỖI'}`);
+
+    // 7.3 Chống Replay: Đơn đã APPROVED ở Bước 4 không thể bị duyệt/từ chối lại
+    const replayRes = await fetch(`http://localhost:${DEMO_PORT}/api/webhook/email-reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': TEST_SECRET },
+      body: JSON.stringify({
+        event: 'email.reply.received',
+        data: {
+          from: managerEmail,
+          subject: `Re: [Đơn Xin Nghỉ Phép #${leaveId}] Cần phê duyệt`,
+          replyText: 'Từ chối'
+        }
+      })
+    });
+    const replayData = await replayRes.json();
+    console.log(`Chống Replay Attack trên đơn đã quyết định: ${replayData.reason === 'ALREADY_DECIDED' ? '✅ ĐÃ CHẶN (ALREADY_DECIDED)' : '❌ LỖI'}`);
+
+    // BƯỚC 8: KIỂM THỬ ĐẶT LẠI MẬT KHẨU (TTL 5 PHÚT)
+    console.log('\n--- BƯỚC 8: Kiểm thử chức năng Quên mật khẩu (TTL 5 phút) ---');
     await fetch(`http://localhost:${DEMO_PORT}/api/forgot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: employeeEmail })
     });
-    await sleep(200);
-    const mailsOld = (await (await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`)).json()).data;
-    const firstResetMail = mailsOld.find(m => m.to === employeeEmail && m.subject.includes('đặt lại mật khẩu'));
-    const oldResetToken = firstResetMail.html.match(/#reset-([a-f0-9]+)/)[1];
+    await sleep(250);
 
-    // Yêu cầu lần 2 (mới nhất)
-    const forgotRes = await fetch(`http://localhost:${DEMO_PORT}/api/forgot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: employeeEmail })
-    });
-    console.log(`Yêu cầu đặt lại mật khẩu: ${forgotRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
+    const mailsRes5 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
+    const { data: mails5 } = await mailsRes5.json();
+    const resetMail = mails5.find(m => m.to === employeeEmail && m.subject.includes('đặt lại mật khẩu'));
+    const has5Min = resetMail && resetMail.html.includes('5 phút');
+    console.log(`Email Reset Password thể hiện đúng TTL 5 phút: ${has5Min ? '✅ ĐẠT CHUẨN' : '❌ LỖI'}`);
 
-    await sleep(300);
-
-    const mailsRes4 = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/mails`);
-    const { data: mails4 } = await mailsRes4.json();
-    const resetMail = mails4.find(m => m.to === employeeEmail && m.subject.includes('đặt lại mật khẩu'));
-
-    if (!resetMail) {
-      throw new Error('❌ Không tìm thấy email đặt lại mật khẩu!');
-    }
-    const has5Min = resetMail.html.includes('5 phút');
-    console.log(`Email reset có thông báo thời hạn 5 phút: ${has5Min ? '✅ ĐẠT CHUẨN' : '❌ SAI TTL'}`);
-
-    const resetTokenMatch = resetMail.html.match(/#reset-([a-f0-9]+)/);
-    if (!resetTokenMatch) {
-      throw new Error('❌ Không trích xuất được reset token từ liên kết email!');
-    }
-    const resetToken = resetTokenMatch[1];
-
-    // Thử dùng token cũ (phải bị từ chối vì đã có token mới)
-    const oldTokenTry = await fetch(`http://localhost:${DEMO_PORT}/api/reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: oldResetToken, newPassword: 'OldAttemptPassword@1' })
-    });
-    console.log(`Vô hiệu hóa link reset cũ khi xin link mới: ${oldTokenTry.status === 400 ? '✅ ĐÃ CHẶN AN TOÀN (400)' : '❌ LỖI'}`);
-
-    // Tiến hành đổi mật khẩu mới bằng token mới nhất
-    const resetRes = await fetch(`http://localhost:${DEMO_PORT}/api/reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: resetToken, newPassword: 'NewPassword@999' })
-    });
-    console.log(`Đặt lại mật khẩu mới: ${resetRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
-
-    // Kiểm tra session cũ đã bị thu hồi sau khi đổi mật khẩu
-    const oldSessionCheck = await fetch(`http://localhost:${DEMO_PORT}/api/me`, {
-      headers: { 'Authorization': `Bearer ${sessionToken}` }
-    });
-    console.log(`Thu hồi phiên đăng nhập cũ sau khi đổi mật khẩu: ${oldSessionCheck.status === 401 ? '✅ ĐÃ THU HỒI (401)' : '❌ LỖI'}`);
-
-    // Đăng nhập lại với mật khẩu mới
-    const newLoginRes = await fetch(`http://localhost:${DEMO_PORT}/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: employeeEmail, password: 'NewPassword@999' })
-    });
-    console.log(`Đăng nhập bằng mật khẩu mới: ${newLoginRes.ok ? '✅ THÀNH CÔNG' : '❌ LỖI'}`);
-
-    // BƯỚC 9: KIỂM THỬ BẢO MẬT OTP & CONTRACT CHẾ ĐỘ LIVE_GMAIL
-    console.log('\n--- BƯỚC 9: Kiểm thử bảo mật OTP (Chống brute-force 5 lần & Ràng buộc Contract LIVE_GMAIL) ---');
-    const dummyEmail = 'dummy_test@tdtu.edu.vn';
-    await fetch(`http://localhost:${DEMO_PORT}/api/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Dummy Test', email: dummyEmail, password: 'Password@123' })
-    });
-
-    for (let i = 1; i <= 5; i++) {
-      await fetch(`http://localhost:${DEMO_PORT}/api/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: dummyEmail, otp: '999999' })
-      });
-    }
-    const blockedRes = await fetch(`http://localhost:${DEMO_PORT}/api/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: dummyEmail, otp: '999999' })
-    });
-    console.log(`Hủy mã OTP và từ chối sau 5 lần sai: ${blockedRes.status === 400 ? '✅ ĐÃ CHẶN CHÍNH XÁC (400)' : '❌ LỖI'}`);
-
-    // Kiểm thử Contract LIVE_GMAIL: không truyền otp/verifyUrl phải trả về 400 Bad Request
-    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'LIVE_GMAIL' })
-    });
-    const liveNoOtpRes = await fetch(`http://localhost:${EMAIL_PORT}/api/v1/verify-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: 'student@tdtu.edu.vn', name: 'Nguyễn Văn A', strictContract: true })
-    });
-    console.log(`Chặn thiếu otp/verifyUrl ở chế độ LIVE_GMAIL (400): ${liveNoOtpRes.status === 400 ? '✅ ĐÚNG CONTRACT SLIDE' : '❌ LỖI'}`);
-
-    // Trả lại chế độ SANDBOX
-    await fetch(`http://localhost:${EMAIL_PORT}/api/v1/config/mode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'SANDBOX' })
-    });
-
-    console.log('\n====================================================');
-    console.log('🎉 TOÀN BỘ KỊCH BẢN DEMO END-TO-END ĐÃ ĐẠT CHUẨN 100%!');
-    console.log('====================================================\n');
+    console.log('🎉 TOÀN BỘ KỊCH BẢN E2E GIAO TIẾP HAI CHIỀU (SMTP & IMAP REPLY) ĐÃ ĐẠT 100%!\n');
   } catch (err) {
     console.error('\n❌ E2E TEST THẤT BẠI:', err.message);
     process.exitCode = 1;

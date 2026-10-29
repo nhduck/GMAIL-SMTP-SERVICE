@@ -137,7 +137,7 @@ function renderMailList() {
     <div class="mail-item ${m.id === selectedMailId ? 'selected' : ''}" onclick="selectMail('${m.id}')">
       <div class="mail-item-title">${escapeHtml(m.subject)}</div>
       <div class="mail-item-to">Tới: ${escapeHtml(m.to)}</div>
-      <div class="mail-item-time">${new Date(m.receivedAt).toLocaleTimeString()} • ${m.mode === 'LIVE_GMAIL' ? '📤 Live Gmail' : '🧪 Sandbox'}</div>
+      <div class="mail-item-time">${new Date(m.receivedAt).toLocaleTimeString()} • ${m.mode === 'LIVE_GMAIL' ? 'Live Gmail' : 'Sandbox'}</div>
     </div>
   `).join('');
 
@@ -161,6 +161,66 @@ window.setPreviewViewport = function (mode) {
   }
 };
 
+window.toggleReplyBox = function () {
+  const box = document.getElementById('replyBox');
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+};
+
+window.submitSandboxReply = async function (mailId) {
+  const input = document.getElementById('replyTextInput');
+  const statusEl = document.getElementById('replyStatus');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+
+  statusEl.innerText = 'Đang gửi phản hồi qua Webhook Inbound...';
+  statusEl.style.color = '#38bdf8';
+
+  try {
+    const res = await fetch('/api/v1/sandbox/reply', {
+      method: 'POST',
+      headers: buildApiHeaders(true),
+      body: JSON.stringify({ mailId, replyText: text })
+    });
+    const json = await res.json();
+    if (res.ok) {
+      const wh = json.webhookResult || {};
+      if (wh.status === 401) {
+        statusEl.innerText = '✕ Webhook bị từ chối: Sai mã xác thực X-Webhook-Secret!';
+        statusEl.style.color = '#ef4444';
+      } else if (wh.data && wh.data.ignored) {
+        statusEl.innerText = `⚠️ Ứng dụng đã nhận phản hồi nhưng bỏ qua: ${wh.data.message || wh.data.reason}`;
+        statusEl.style.color = '#f59e0b';
+      } else if (wh.data && wh.data.ambiguous) {
+        statusEl.innerText = 'ℹ️ Cú pháp chưa rõ ràng. Đã gửi email nhắc nhở cú pháp cho Quản lý.';
+        statusEl.style.color = '#38bdf8';
+        setTimeout(() => loadMails(), 400);
+      } else if (wh.data && wh.data.leave) {
+        const st = wh.data.leave.status;
+        statusEl.innerText = `✓ Đã xử lý ${st === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} đơn #${wh.data.leave.id} thành công! Email kết quả đã gửi về cho Nhân viên.`;
+        statusEl.style.color = '#10b981';
+        setTimeout(async () => {
+          await loadMails();
+          if (mails.length > 0) {
+            window.selectMail(mails[0].id, false);
+          }
+        }, 500);
+      } else {
+        statusEl.innerText = `✓ ${json.message}`;
+        statusEl.style.color = '#10b981';
+        setTimeout(() => loadMails(), 400);
+      }
+    } else {
+      statusEl.innerText = `✕ Lỗi: ${json.error || 'Gửi thất bại'}`;
+      statusEl.style.color = '#ef4444';
+    }
+  } catch (err) {
+    statusEl.innerText = `✕ Lỗi mạng: ${err.message}`;
+    statusEl.style.color = '#ef4444';
+  }
+};
+
 window.selectMail = function (id, shouldScrollOnMobile = true) {
   const mail = mails.find(m => m.id === id);
   if (!mail) return;
@@ -171,6 +231,8 @@ window.selectMail = function (id, shouldScrollOnMobile = true) {
     el.classList.toggle('selected', el.getAttribute('onclick') === `selectMail('${id}')`);
   });
 
+  const isReplyAvailable = currentMode === 'SANDBOX';
+
   mailViewer.innerHTML = `
     <div class="preview-toolbar">
       <div>
@@ -180,11 +242,27 @@ window.selectMail = function (id, shouldScrollOnMobile = true) {
           <div><b>Thời gian:</b> ${new Date(mail.receivedAt).toLocaleString()} (${mail.mode === 'LIVE_GMAIL' ? 'Đã gửi qua Live Gmail' : 'Hộp thư ảo Sandbox'})</div>
         </div>
       </div>
-      <div class="viewport-switcher" title="Chuyển đổi khung nhìn để kiểm tra HTML Email Responsive">
-        <button type="button" id="btnViewportDesktop" class="viewport-btn ${previewViewport === 'desktop' ? 'active' : ''}" onclick="setPreviewViewport('desktop')">🖥 Desktop</button>
-        <button type="button" id="btnViewportMobile" class="viewport-btn ${previewViewport === 'mobile' ? 'active' : ''}" onclick="setPreviewViewport('mobile')">📱 Mobile (375px)</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        ${isReplyAvailable ? `<button type="button" class="viewport-btn" onclick="toggleReplyBox()" style="font-weight: 600; color: #0284c7; border-color: #0284c7;">Trả lời thư</button>` : ''}
+        <div class="viewport-switcher" title="Chuyển đổi khung nhìn để kiểm tra HTML Email Responsive">
+          <button type="button" id="btnViewportDesktop" class="viewport-btn ${previewViewport === 'desktop' ? 'active' : ''}" onclick="setPreviewViewport('desktop')">Desktop</button>
+          <button type="button" id="btnViewportMobile" class="viewport-btn ${previewViewport === 'mobile' ? 'active' : ''}" onclick="setPreviewViewport('mobile')">Mobile (375px)</button>
+        </div>
       </div>
     </div>
+
+    <!-- Khối Trả Lời Thư Giả Lập Trong Sandbox -->
+    <div id="replyBox" style="display: none; margin: 12px 0; padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+      <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: #0f172a;">
+        Mô phỏng Quản lý Reply qua Email (IMAP &amp; Webhook):
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="replyTextInput" value="Duyệt" placeholder="Gõ Duyệt hoặc Từ chối..." style="flex: 1; padding: 6px 12px; border: 1px solid #94a3b8; border-radius: 4px; font-size: 0.9rem;" />
+        <button type="button" class="btn btn-primary" onclick="submitSandboxReply('${mail.id}')" style="padding: 6px 16px;">Gửi phản hồi</button>
+      </div>
+      <div id="replyStatus" style="font-size: 0.85rem; margin-top: 6px;"></div>
+    </div>
+
     <div class="mail-preview-stage">
       ${mail.html
         ? `<iframe id="mailPreviewIframe" class="mail-iframe ${previewViewport === 'mobile' ? 'mobile-frame' : ''}" title="Email HTML Preview"></iframe>`
@@ -288,7 +366,7 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
   const statusBox = document.getElementById('testStatus');
 
   statusBox.innerText = currentMode === 'LIVE_GMAIL'
-    ? '⏳ Đang kết nối smtp.gmail.com:587 và gửi thư (mất khoảng 3-5 giây)...'
+    ? 'Đang kết nối smtp.gmail.com:587 và gửi thư (mất khoảng 3-5 giây)...'
     : 'Đang gửi...';
   statusBox.style.color = '#38bdf8';
 
@@ -323,7 +401,7 @@ document.getElementById('testSendForm').addEventListener('submit', async (e) => 
     if (res.ok) {
       const extraInfo = result.otp ? ` (Mã OTP: ${result.otp})` : (payload.otp ? ` (Mã OTP đã gửi: ${payload.otp})` : '');
       statusBox.innerText = currentMode === 'LIVE_GMAIL'
-        ? `⏳ Đã xếp hàng gửi tới ${to}${extraInfo} — đang chờ Gmail SMTP xác nhận...`
+        ? `Đã xếp hàng gửi tới ${to}${extraInfo} — đang chờ Gmail SMTP xác nhận...`
         : `✓ ${result.message}${extraInfo}`;
       statusBox.style.color = '#10b981';
       loadMails();
@@ -363,7 +441,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
     });
     const result = await res.json();
     if (res.ok) {
-      statusBox.innerText = '✓ ' + result.message + ' (Hãy sang tab "Kiểm Thử Gửi Mail" hoặc dùng App cổng 4000 để bắn email thật)';
+      statusBox.innerText = '✓ ' + result.message;
       statusBox.style.color = '#10b981';
       if (user && document.getElementById('testTo')) {
         document.getElementById('testTo').value = user.trim();
@@ -393,7 +471,7 @@ function connectWebSocket() {
       }
       if (data.type === 'JOB_COMPLETED' && data.job && currentMode === 'LIVE_GMAIL') {
         const statusBox = document.getElementById('testStatus');
-        if (statusBox && statusBox.innerText.includes('⏳')) {
+        if (statusBox && statusBox.innerText.includes('Đang')) {
           statusBox.innerText = `✓ Đã gửi thành công vào hộp thư Gmail thật (${data.job.to})!`;
           statusBox.style.color = '#10b981';
         }

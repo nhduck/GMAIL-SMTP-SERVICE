@@ -2,6 +2,7 @@
 
 const modeManager = require('../core/mode-manager');
 const smtpLive = require('../core/smtp-live');
+const imapService = require('../core/imap-service');
 const validator = require('../core/validator');
 const { isAdminRequest } = require('../core/security');
 
@@ -16,7 +17,7 @@ module.exports = {
   },
 
   // POST /api/v1/config/mode (Chuyển chế độ hoạt động) - yêu cầu quyền quản trị
-  setMode: (req, res) => {
+  setMode: async (req, res) => {
     const { mode } = req.body;
     const ok = modeManager.setMode(mode);
     if (!ok) {
@@ -27,12 +28,19 @@ module.exports = {
       req.app.get('broadcastWs')({ type: 'MODE_CHANGED', mode });
     }
 
+    // Tự động đồng bộ dịch vụ IMAP Listener theo chế độ hoạt động
+    try {
+      await imapService.syncWithMode(mode);
+    } catch (imapErr) {
+      console.warn('[IMAP Sync Warning]', imapErr.message);
+    }
+
     return res.json({ success: true, mode, isConfigured: modeManager.getConfig().isConfigured });
   },
 
   // POST /api/v1/config/credentials (Lưu email & App Password) - yêu cầu quyền quản trị
-  updateCredentials: (req, res) => {
-    const { user, appPassword, webhookUrl } = req.body;
+  updateCredentials: async (req, res) => {
+    const { user, appPassword, webhookUrl, webhookSecret } = req.body;
 
     if (user && !validator.isValidEmail(user)) {
       return res.status(400).json({ success: false, error: 'Tài khoản Gmail không đúng định dạng email.' });
@@ -50,8 +58,17 @@ module.exports = {
       }
     }
 
-    modeManager.updateCredentials({ user, appPassword, webhookUrl });
+    modeManager.updateCredentials({ user, appPassword, webhookUrl, webhookSecret });
     smtpLive.resetTransporter();
+
+    // Khởi động lại dịch vụ IMAP nếu đang ở chế độ LIVE_GMAIL
+    try {
+      if (modeManager.getMode() === 'LIVE_GMAIL') {
+        await imapService.syncWithMode('LIVE_GMAIL');
+      }
+    } catch (imapErr) {
+      console.warn('[IMAP Restart Warning]', imapErr.message);
+    }
 
     return res.json({
       success: true,
