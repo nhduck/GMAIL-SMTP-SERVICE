@@ -16,10 +16,15 @@ function cleanReplyText(rawText) {
 
   const cleanLines = [];
 
-  // Các regex nhận diện bắt đầu khối trích dẫn thư cũ
+  // Các regex nhận diện bắt đầu khối trích dẫn thư cũ (hỗ trợ cả dòng đơn và ngắt dòng của Gmail/Outlook)
   const quoteStartRegexes = [
-    /^\s*On\s+.+wrote:\s*$/i,                  // On Thu, Oct 29, 2026 at 10:00 AM ... wrote:
-    /^\s*Vào\s+.+đã viết:\s*$/i,              // Vào Th 5, 29 thg 10, 2026 lúc 10:00 ... đã viết:
+    /^\s*On\s+.+wrote:/i,                     // On Thu, Oct 29, 2026 at 10:00 AM ... wrote:
+    /^\s*On\s+.+<.+@.+>/i,                    // On Thu, Oct 29, 2026, Name <email@domain>
+    /^\s*Vào\s+.+đã viết:/i,                 // Vào Th 5, 29 thg 10, 2026 lúc 10:00 ... đã viết:
+    /^\s*Vào\s+.+<.+@.+>/i,                   // Vào Thứ 5, 29 thg 10 ... <email@domain>
+    /^\s*Vào\s+.+lúc\s+/i,                    // Vào ... lúc 18:17 ...
+    /^\s*đã viết:\s*$/i,                      // đã viết: (khi Gmail tự ngắt sang dòng tiếp theo)
+    /^\s*wrote:\s*$/i,                        // wrote: (khi Gmail tự ngắt sang dòng tiếp theo)
     /^\s*---+\s*Original Message\s*---+/i,     // -----Original Message-----
     /^\s*---+\s*Tin nhắn gốc\s*---+/i,         // -----Tin nhắn gốc-----
     /^\s*_{10,}/,                              // ________________________________ (Outlook separator)

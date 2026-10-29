@@ -312,6 +312,7 @@ async function handleWebhookEmailReply(req, res) {
   }
 
   // 3. Kiểm tra địa chỉ người gửi: Người gửi phải khớp với Quản lý được phân công (hoặc Quản lý mặc định hệ thống)
+  const fromRaw = String(data.from || '').toLowerCase();
   const pureSender = extractPureEmail(data.from || '');
   const expectedManager = (leave.managerEmail || resolveManagerEmail()).toLowerCase();
   const defaultManager = resolveManagerEmail();
@@ -320,7 +321,9 @@ async function handleWebhookEmailReply(req, res) {
     pureSender === expectedManager ||
     pureSender === (leave.managerEmail || '').toLowerCase() ||
     pureSender === defaultManager ||
-    pureSender === 'manager@demo.local';
+    pureSender === 'manager@demo.local' ||
+    fromRaw.includes(expectedManager) ||
+    fromRaw.includes(defaultManager);
 
   if (!isSenderAuthorized) {
     console.warn(`[Webhook Consumer] Từ chối xử lý: Người gửi (${pureSender}) không khớp với Quản lý phụ trách (${expectedManager}) của đơn #${leaveId}.`);

@@ -77,83 +77,102 @@ async function startListening(onReplyCallback) {
     reconnectAttempt = 0;
     console.log('✓ [IMAP] Đã kết nối thành công tới imap.gmail.com:993 và mở chế độ lắng nghe IDLE.');
 
-    // Mở hộp thư INBOX (chỉ đọc để tránh làm thay đổi cờ hộp thư nếu người dùng không muốn)
-    const lock = await client.getMailboxLock('INBOX');
+    // Mở và giải phóng khóa INBOX để ImapFlow chọn đúng mailbox
+    const initLock = await client.getMailboxLock('INBOX');
+    initLock.release();
 
-    // Lắng nghe sự kiện có thư mới tới
+    // Hàm xử lý an toàn cho một thư
+    async function handleIncomingMessage(msg) {
+      if (!msg || !msg.source) return;
+
+      const parsed = await simpleParser(msg.source);
+      const messageId = parsed.messageId || (msg.envelope && msg.envelope.messageId);
+
+      // 1. Chống xử lý trùng lặp Message-ID
+      if (messageId && processedMessageIds.has(messageId)) {
+        return;
+      }
+
+      // 2. Bỏ qua thư tự động (Auto-Submitted)
+      const autoSubmitted = parsed.headers.get('auto-submitted');
+      if (autoSubmitted && String(autoSubmitted).toLowerCase() !== 'no') {
+        console.log('[IMAP Filter] Bỏ qua thư tự động (Auto-Submitted).');
+        return;
+      }
+
+      // 3. Chỉ xử lý thư trả lời: Tiêu đề bắt đầu bằng Re:/RE: hoặc có header In-Reply-To
+      const subject = parsed.subject || '';
+      const inReplyTo = parsed.inReplyTo || (msg.envelope && msg.envelope.inReplyTo);
+      const isReSubject = /^re:\s+/i.test(subject);
+
+      if (!isReSubject && !inReplyTo) {
+        return;
+      }
+
+      // Đánh dấu đã xử lý để không xử lý lại
+      markProcessed(messageId);
+
+      // 4. Cắt phần trích dẫn thư cũ, chỉ lấy nội dung trả lời mới gõ
+      const rawBody = parsed.text || '';
+      const replyText = cleanReplyText(rawBody);
+      const fromHeader = parsed.from?.text || '';
+      const fromEmail = extractPureEmail(fromHeader);
+
+      console.log(`[IMAP Received] Bắt được thư trả lời từ: ${fromHeader}`);
+      console.log(`[IMAP Received] Tiêu đề: "${subject}" | In-Reply-To: ${inReplyTo || 'N/A'}`);
+      console.log(`[IMAP Received] Nội dung sau khi làm sạch: "${replyText}"`);
+
+      const mailPayload = {
+        messageId,
+        inReplyTo: inReplyTo || null,
+        from: fromHeader || fromEmail,
+        to: parsed.to?.text || '',
+        subject,
+        replyText,
+        rawText: rawBody,
+        receivedAt: parsed.date ? parsed.date.toISOString() : new Date().toISOString()
+      };
+
+      if (typeof activeCallback === 'function') {
+        activeCallback(mailPayload);
+      }
+    }
+
+    // Quét nhanh các thư gần nhất khi vừa kết nối để không bỏ sót thư đến trong lúc server khởi động
+    try {
+      const lock = await client.getMailboxLock('INBOX');
+      try {
+        const total = client.mailbox ? client.mailbox.exists : 0;
+        if (total > 0) {
+          const startSeq = Math.max(1, total - 2);
+          for await (let msg of client.fetch(`${startSeq}:*`, { source: true, envelope: true })) {
+            await handleIncomingMessage(msg);
+          }
+        }
+      } finally {
+        lock.release();
+      }
+    } catch (scanErr) {
+      console.warn('[IMAP Initial Scan Warning]', scanErr.message);
+    }
+
+    // Lắng nghe sự kiện có thư mới tới (IDLE tự động kích hoạt bởi ImapFlow)
     client.on('exists', async (data) => {
       try {
         console.log(`[IMAP IDLE] Nhận tín hiệu thư mới! (Tổng số thư hiện tại: ${data.count})`);
-        // Lấy thư mới nhất theo sequence number
-        const msg = await client.fetchOne(data.count, { source: true, envelope: true });
-        if (!msg || !msg.source) return;
-
-        const parsed = await simpleParser(msg.source);
-        const messageId = parsed.messageId || (msg.envelope && msg.envelope.messageId);
-
-        // 1. Chống xử lý trùng lặp Message-ID
-        if (messageId && processedMessageIds.has(messageId)) {
-          return;
-        }
-        markProcessed(messageId);
-
-        // 2. Chống vòng lặp: Bỏ qua thư do chính tài khoản bot dịch vụ gửi đi
-        const fromEmail = extractPureEmail(parsed.from?.text || '');
-        if (fromEmail === user.toLowerCase()) {
-          console.log(`[IMAP Filter] Bỏ qua thư do chính tài khoản Gateway gửi (${fromEmail}).`);
-          return;
-        }
-
-        // 3. Bỏ qua thư tự động (Auto-Submitted)
-        const autoSubmitted = parsed.headers.get('auto-submitted');
-        if (autoSubmitted && String(autoSubmitted).toLowerCase() !== 'no') {
-          console.log('[IMAP Filter] Bỏ qua thư tự động (Auto-Submitted).');
-          return;
-        }
-
-        // 4. Chỉ xử lý thư trả lời: Tiêu đề bắt đầu bằng Re:/RE: hoặc có header In-Reply-To
-        const subject = parsed.subject || '';
-        const inReplyTo = parsed.inReplyTo || (msg.envelope && msg.envelope.inReplyTo);
-        const isReSubject = /^re:\s+/i.test(subject);
-
-        if (!isReSubject && !inReplyTo) {
-          console.log(`[IMAP Filter] Bỏ qua thư không phải thư trả lời (Tiêu đề: "${subject}").`);
-          return;
-        }
-
-        // 5. Cắt phần trích dẫn thư cũ, chỉ lấy nội dung trả lời mới gõ
-        const rawBody = parsed.text || '';
-        const replyText = cleanReplyText(rawBody);
-
-        console.log(`[IMAP Received] Bắt được thư trả lời từ: ${fromEmail}`);
-        console.log(`[IMAP Received] Tiêu đề: "${subject}" | In-Reply-To: ${inReplyTo || 'N/A'}`);
-        console.log(`[IMAP Received] Nội dung sau khi làm sạch: "${replyText}"`);
-
-        const mailPayload = {
-          messageId,
-          inReplyTo: inReplyTo || null,
-          from: parsed.from?.text || fromEmail,
-          to: parsed.to?.text || '',
-          subject,
-          replyText,
-          rawText: rawBody,
-          receivedAt: parsed.date ? parsed.date.toISOString() : new Date().toISOString()
-        };
-
-        if (typeof activeCallback === 'function') {
-          activeCallback(mailPayload);
+        const lock = await client.getMailboxLock('INBOX');
+        try {
+          const msg = await client.fetchOne(data.count, { source: true, envelope: true });
+          if (msg) {
+            await handleIncomingMessage(msg);
+          }
+        } finally {
+          lock.release();
         }
       } catch (fetchErr) {
         console.error('[IMAP Fetch Error]', fetchErr.message);
       }
     });
-
-    // Bắt đầu lệnh IDLE để giữ kết nối socket mở
-    try {
-      await client.idle();
-    } catch (idleErr) {
-      console.warn('[IMAP IDLE Interrupt]', idleErr.message);
-    }
   } catch (err) {
     console.error('[IMAP Connection Error]', err.message);
     isRunning = false;
