@@ -37,3 +37,4 @@ module.exports = {
   stop: () => imapListener.stopListening(),
   getStatus: () => imapListener.getStatus()
 };
+

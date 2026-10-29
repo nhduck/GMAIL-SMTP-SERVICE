@@ -185,9 +185,32 @@ window.submitSandboxReply = async function (mailId) {
     });
     const json = await res.json();
     if (res.ok) {
-      statusEl.innerText = `✓ Đã phát sự kiện webhook (Nội dung: "${json.data.replyText}")!`;
-      statusEl.style.color = '#10b981';
-      loadMails();
+      const wh = json.webhookResult || {};
+      if (wh.status === 401) {
+        statusEl.innerText = '✕ Webhook bị từ chối: Sai mã xác thực X-Webhook-Secret!';
+        statusEl.style.color = '#ef4444';
+      } else if (wh.data && wh.data.ignored) {
+        statusEl.innerText = `⚠️ Ứng dụng đã nhận phản hồi nhưng bỏ qua: ${wh.data.message || wh.data.reason}`;
+        statusEl.style.color = '#f59e0b';
+      } else if (wh.data && wh.data.ambiguous) {
+        statusEl.innerText = 'ℹ️ Cú pháp chưa rõ ràng. Đã gửi email nhắc nhở cú pháp cho Quản lý.';
+        statusEl.style.color = '#38bdf8';
+        setTimeout(() => loadMails(), 400);
+      } else if (wh.data && wh.data.leave) {
+        const st = wh.data.leave.status;
+        statusEl.innerText = `✓ Đã xử lý ${st === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} đơn #${wh.data.leave.id} thành công! Email kết quả đã gửi về cho Nhân viên.`;
+        statusEl.style.color = '#10b981';
+        setTimeout(async () => {
+          await loadMails();
+          if (mails.length > 0) {
+            window.selectMail(mails[0].id, false);
+          }
+        }, 500);
+      } else {
+        statusEl.innerText = `✓ ${json.message}`;
+        statusEl.style.color = '#10b981';
+        setTimeout(() => loadMails(), 400);
+      }
     } else {
       statusEl.innerText = `✕ Lỗi: ${json.error || 'Gửi thất bại'}`;
       statusEl.style.color = '#ef4444';

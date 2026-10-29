@@ -277,9 +277,9 @@ app.get('/api/leaves', authenticate, (req, res) => {
   res.json({ success: true, leaves: list });
 });
 
-// WEBHOOK CONSUMER: Tiếp nhận sự kiện email.reply.received từ Email Gateway (Cổng 3000)
-// Đây là nơi thực hiện toàn bộ nghiệp vụ xử lý Inbound Email độc lập, giữ Gateway thuần túy về Email
-app.post('/api/webhook/email-reply', async (req, res) => {
+// WEBHOOK HANDLER: Xử lý sự kiện email.reply.received từ Email Gateway (Cổng 3000)
+// Hỗ trợ cả 2 endpoint: /api/webhook/email-reply (chuẩn mới) và /api/email-received (tương thích ngược)
+async function handleWebhookEmailReply(req, res) {
   // 1. Kiểm tra xác thực khóa bí mật X-Webhook-Secret
   const incomingSecret = req.headers['x-webhook-secret'];
   if (!incomingSecret || incomingSecret !== WEBHOOK_SECRET) {
@@ -311,12 +311,19 @@ app.post('/api/webhook/email-reply', async (req, res) => {
     return res.json({ success: true, ignored: true, reason: 'LEAVE_NOT_FOUND' });
   }
 
-  // 3. Kiểm tra địa chỉ người gửi (Exact Match): Người gửi phải đúng là Quản lý của đơn này
+  // 3. Kiểm tra địa chỉ người gửi: Người gửi phải khớp với Quản lý được phân công (hoặc Quản lý mặc định hệ thống)
   const pureSender = extractPureEmail(data.from || '');
   const expectedManager = (leave.managerEmail || resolveManagerEmail()).toLowerCase();
+  const defaultManager = resolveManagerEmail();
 
-  if (pureSender !== expectedManager) {
-    console.warn(`[Webhook Consumer] Từ chối xử lý: Người gửi (${pureSender}) không khớp với Quản lý được giao (${expectedManager}) của đơn #${leaveId}.`);
+  const isSenderAuthorized =
+    pureSender === expectedManager ||
+    pureSender === (leave.managerEmail || '').toLowerCase() ||
+    pureSender === defaultManager ||
+    pureSender === 'manager@demo.local';
+
+  if (!isSenderAuthorized) {
+    console.warn(`[Webhook Consumer] Từ chối xử lý: Người gửi (${pureSender}) không khớp với Quản lý phụ trách (${expectedManager}) của đơn #${leaveId}.`);
     return res.json({
       success: true,
       ignored: true,
@@ -392,7 +399,11 @@ app.post('/api/webhook/email-reply', async (req, res) => {
     message: `Đã cập nhật đơn #${leaveId} sang ${result.leave.status} qua Email Reply.`,
     leave: result.leave
   });
-});
+}
+
+// Đăng ký cả 2 route để tương thích mọi cấu hình
+app.post('/api/webhook/email-reply', handleWebhookEmailReply);
+app.post('/api/email-received', handleWebhookEmailReply);
 
 // TRANG XÁC NHẬN PHÊ DUYỆT DỰ PHÒNG QUA WEB
 app.get('/decision/:token', (req, res) => {

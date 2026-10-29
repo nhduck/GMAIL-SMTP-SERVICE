@@ -52,5 +52,11 @@ module.exports = {
     pass: state.gmailAppPassword
   }),
   getWebhookSecret: () => state.webhookSecret || DEFAULT_WEBHOOK_SECRET,
-  getWebhookUrl: () => state.webhookUrl || DEFAULT_WEBHOOK_URL
+  getWebhookUrl: () => {
+    let url = state.webhookUrl || DEFAULT_WEBHOOK_URL;
+    if (url.includes('/api/email-received')) {
+      url = url.replace('/api/email-received', '/api/webhook/email-reply');
+    }
+    return url;
+  }
 };
