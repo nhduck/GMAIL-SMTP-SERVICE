@@ -88,27 +88,6 @@ npm test            # Kiểm thử 5 bộ chỉ tiêu SLA < 45ms, Queue, DLQ, Ci
 
 ---
 
-## CÂU HỎI VÀ ĐÁP ÁN BẢO VỆ PHẢN BIỆN (Q&A CHO GIẢNG VIÊN)
-
-### Q1: "Đề bài là Gmail SMTP, tại sao nhóm lại dùng thêm cả IMAP?"
-> **Đáp án:**
-> "SMTP vốn dĩ là giao thức một chiều (chỉ phục vụ chiều gửi đi - Outbound). Trong các hệ thống SOA thực tế, nếu chỉ dùng SMTP thì người dùng luôn phải click vào một đường link web để tương tác tiếp, làm gián đoạn trải nghiệm người dùng.  
-> Để hoàn thiện chu trình nghiệp vụ khép kín **ngay trên hòm thư** theo chuẩn **Bidirectional Email Messaging**, nhóm tích hợp thêm **IMAP IDLE (Cổng 993)** đóng vai trò Event Consumer ở tầng Gateway. Nhờ đó, Quản lý chỉ cần bấm **Reply** và gõ 'Duyệt' là hệ thống tự động bắt tín hiệu và hoàn tất nghiệp vụ. Đây là bước phát triển tự nhiên từ SMTP sang giải pháp tương tác hoàn chỉnh trong SOA."
-
-### Q2: "Làm sao hệ thống chắc chắn người Reply đúng là Quản lý mà không phải người khác giả mạo?"
-> **Đáp án:**
-> "Hệ thống áp dụng cơ chế bảo mật 3 lớp nghiêm ngặt:
-> 1. **Tầng mạng & Email Server:** Google Gmail tự động áp dụng các chuẩn SPF, DKIM và DMARC, đảm bảo địa chỉ người gửi không thể bị giả mạo ở tầng giao thức.
-> 2. **Tầng ứng dụng nghiệp vụ:** Leave App trích xuất địa chỉ email thuần của người gửi (loại bỏ tên hiển thị giả mạo) và so khớp chính xác (`===`) với trường `leave.managerEmail` được phân công cụ thể của đơn đó.
-> 3. **Tầng luồng hội thoại:** Hệ thống xác thực chuỗi `In-Reply-To` khớp với Message-ID của thư gốc và mã định danh duy nhất `#lv_[a-f0-9]{12}` trong tiêu đề đơn."
-
-### Q3: "Tại sao không để Gateway tự phân tích chữ 'Duyệt' và tự cập nhật cơ sở dữ liệu?"
-> **Đáp án:**
-> "Đây là điểm cốt lõi của nguyên lý **Loose Coupling (Ràng buộc lỏng lẻo)** trong kiến trúc SOA. Gateway là dịch vụ hạ tầng dùng chung (Email-as-a-Service), không được phép chứa logic nghiệp vụ đặc thù của ứng dụng Quản lý Nghỉ phép.  
-> Trách nhiệm của Gateway dừng lại ở việc: đọc email qua IMAP, cắt bỏ khối trích dẫn thư cũ (`cleanReplyText`), và phát sự kiện chuẩn `email.reply.received` qua Webhook có chữ ký bí mật `X-Webhook-Secret`. Toàn bộ quyết định ai được duyệt, từ khóa nào hợp lệ, và cập nhật trạng thái đơn thuộc về ứng dụng nghiệp vụ Leave App."
-
----
-
 ## CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```
