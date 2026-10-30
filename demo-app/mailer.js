@@ -141,7 +141,7 @@ module.exports = {
           { label: 'Thời gian nghỉ', value: `Từ ${leave.startDate} đến ${leave.endDate} (${leave.days} ngày)` },
           { label: 'Lý do ban đầu', value: leave.reason },
           { label: 'Thời điểm xử lý', value: new Date(leave.decidedAt || Date.now()).toLocaleString('vi-VN') },
-          { label: 'Phương thức', value: 'Phê duyệt trực tiếp qua Email Reply (IMAP)' }
+          { label: 'Phương thức', value: 'Phê duyệt trực tiếp bởi quản lý' }
         ],
         footer: 'Email kết quả tự động từ Cổng Thông Tin Nhân Sự TMT Company.'
       }
